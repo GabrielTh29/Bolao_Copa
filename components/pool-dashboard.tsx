@@ -14,7 +14,6 @@ import type { Pool, Participant, Match, Prediction } from "@/lib/types"
 import { Leaderboard } from "@/components/leaderboard"
 import { MatchList } from "@/components/match-list"
 import { PredictionHistory } from "@/components/prediction-history"
-import { SyncButton } from "@/components/sync-button"
 
 interface PoolDashboardProps {
   pool: Pool
@@ -323,15 +322,6 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <h3 className="font-medium mb-2">Sincronizar Jogos</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Atualize os jogos e resultados da Copa do Mundo diretamente da API Football-Data.org.
-                    Os pontos serao calculados automaticamente quando um jogo terminar.
-                  </p>
-                  <SyncButton />
-                </div>
-                
-                <div className="border-t pt-6">
                   <h3 className="font-medium mb-2">Compartilhar Bolao</h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     Convide amigos compartilhando o link ou codigo abaixo:

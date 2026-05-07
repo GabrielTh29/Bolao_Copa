@@ -14,7 +14,6 @@ import type { Pool, Participant, Match, Prediction } from "@/lib/types"
 import { Leaderboard } from "@/components/leaderboard"
 import { MatchList } from "@/components/match-list"
 import { PredictionHistory } from "@/components/prediction-history"
-import { SyncButton } from "@/components/sync-button"
 
 interface PoolDashboardProps {
   pool: Pool
@@ -32,6 +31,7 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
   const [copied, setCopied] = useState(false)
   const [currentParticipantId, setCurrentParticipantId] = useState<string | null>(null)
   const [currentParticipantName, setCurrentParticipantName] = useState<string | null>(null)
+  const [showSelectParticipant, setShowSelectParticipant] = useState(false)
   
   // Points configuration editing
   const [editingPoints, setEditingPoints] = useState(false)
@@ -46,13 +46,24 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
   useEffect(() => {
     const participantId = localStorage.getItem("participant_id")
     const participantName = localStorage.getItem("participant_name")
-    setCurrentParticipantId(participantId)
-    setCurrentParticipantName(participantName)
+    const storedPoolId = localStorage.getItem("pool_id")
     
-    if (participantId) {
-      loadPredictions(participantId)
+    // Verifica se o participante salvo pertence a este bolao
+    if (participantId && storedPoolId === pool.id) {
+      const existsInPool = initialParticipants.some(p => p.id === participantId)
+      if (existsInPool) {
+        setCurrentParticipantId(participantId)
+        setCurrentParticipantName(participantName)
+        loadPredictions(participantId)
+      } else {
+        // Participante nao existe mais neste bolao
+        setShowSelectParticipant(true)
+      }
+    } else {
+      // Nao tem sessao ou e de outro bolao - mostrar selecao
+      setShowSelectParticipant(true)
     }
-  }, [])
+  }, [pool.id, initialParticipants])
 
   const loadPredictions = async (participantId: string) => {
     const { data } = await supabase
@@ -83,6 +94,16 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
     localStorage.removeItem("participant_name")
     localStorage.removeItem("pool_id")
     router.push("/")
+  }
+
+  const selectParticipant = (participant: Participant) => {
+    localStorage.setItem("participant_id", participant.id)
+    localStorage.setItem("participant_name", participant.name)
+    localStorage.setItem("pool_id", pool.id)
+    setCurrentParticipantId(participant.id)
+    setCurrentParticipantName(participant.name)
+    setShowSelectParticipant(false)
+    loadPredictions(participant.id)
   }
 
   const handlePredictionUpdate = () => {
@@ -133,6 +154,54 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
       total_points: totalPoints,
     }
   }).sort((a, b) => b.total_points - a.total_points)
+
+  // Tela de selecao de participante
+  if (showSelectParticipant) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Users className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">{pool.name}</CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              Selecione seu nome para continuar:
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {participants.map((participant) => (
+              <Button
+                key={participant.id}
+                variant="outline"
+                className="w-full justify-start gap-2 h-auto py-3"
+                onClick={() => selectParticipant(participant)}
+              >
+                <Users className="h-4 w-4" />
+                <span>{participant.name}</span>
+                {participant.name === pool.admin_name && (
+                  <Badge variant="secondary" className="ml-auto text-xs">Admin</Badge>
+                )}
+              </Button>
+            ))}
+            
+            <div className="pt-4 border-t mt-4">
+              <p className="text-sm text-muted-foreground text-center mb-3">
+                Nao esta na lista?
+              </p>
+              <Button 
+                variant="secondary" 
+                className="w-full"
+                onClick={() => window.location.href = `/join/${pool.invite_code}`}
+              >
+                Entrar como novo participante
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -253,15 +322,6 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <h3 className="font-medium mb-2">Sincronizar Jogos</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Atualize os jogos e resultados da Copa do Mundo diretamente da API Football-Data.org.
-                    Os pontos serao calculados automaticamente quando um jogo terminar.
-                  </p>
-                  <SyncButton />
-                </div>
-                
-                <div className="border-t pt-6">
                   <h3 className="font-medium mb-2">Compartilhar Bolao</h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     Convide amigos compartilhando o link ou codigo abaixo:

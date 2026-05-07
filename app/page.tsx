@@ -29,7 +29,7 @@ export default function HomePage() {
   // Create pool form
   const [poolName, setPoolName] = useState("")
   const [adminName, setAdminName] = useState("")
-  const [poolPassword, setPoolPassword] = useState("")
+  const [adminPassword, setAdminPassword] = useState("")
   const [showPointsConfig, setShowPointsConfig] = useState(false)
   const [pointsExact, setPointsExact] = useState(10)
   const [pointsResultOneScore, setPointsResultOneScore] = useState(5)
@@ -40,14 +40,19 @@ export default function HomePage() {
   // Join pool form
   const [inviteCode, setInviteCode] = useState("")
   const [participantName, setParticipantName] = useState("")
-  const [joinPassword, setJoinPassword] = useState("")
-  const [poolRequiresPassword, setPoolRequiresPassword] = useState(false)
-  const [poolInfo, setPoolInfo] = useState<{ id: string; name: string; admin_name: string; password: string | null } | null>(null)
+  const [participantPassword, setParticipantPassword] = useState("")
+  const [poolInfo, setPoolInfo] = useState<{ id: string; name: string; admin_name: string } | null>(null)
 
   const handleCreatePool = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+
+    if (!adminPassword.trim()) {
+      setError("Senha e obrigatoria")
+      setIsLoading(false)
+      return
+    }
 
     try {
       const code = generateInviteCode()
@@ -63,19 +68,19 @@ export default function HomePage() {
           points_result_goal_diff: pointsResultGoalDiff,
           points_result_only: pointsResultOnly,
           points_exact_opposite: pointsExactOpposite,
-          password: poolPassword.trim() || null,
         })
         .select()
         .single()
 
       if (poolError) throw poolError
 
-      // Add admin as first participant
+      // Add admin as first participant with password
       const { data: participant, error: participantError } = await supabase
         .from("participants")
         .insert({
           pool_id: pool.id,
           name: adminName,
+          password: adminPassword,
         })
         .select()
         .single()
@@ -104,7 +109,7 @@ export default function HomePage() {
     try {
       const { data: pool, error: poolError } = await supabase
         .from("pools")
-        .select("id, name, admin_name, password")
+        .select("id, name, admin_name")
         .eq("invite_code", inviteCode.toUpperCase())
         .single()
 
@@ -113,11 +118,9 @@ export default function HomePage() {
       }
 
       setPoolInfo(pool)
-      setPoolRequiresPassword(!!pool.password)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao buscar bolao")
       setPoolInfo(null)
-      setPoolRequiresPassword(false)
     } finally {
       setIsLoading(false)
     }
@@ -128,13 +131,19 @@ export default function HomePage() {
     setIsLoading(true)
     setError(null)
 
+    if (!participantPassword.trim()) {
+      setError("Senha e obrigatoria")
+      setIsLoading(false)
+      return
+    }
+
     try {
       // If we don't have pool info yet, fetch it first
       let pool = poolInfo
       if (!pool) {
         const { data, error: poolError } = await supabase
           .from("pools")
-          .select("id, name, admin_name, password")
+          .select("id, name, admin_name")
           .eq("invite_code", inviteCode.toUpperCase())
           .single()
 
@@ -144,21 +153,20 @@ export default function HomePage() {
         pool = data
       }
 
-      // Verify password if pool has one
-      if (pool.password && pool.password !== joinPassword) {
-        throw new Error("Senha incorreta")
-      }
-
       // Check if participant already exists
       const { data: existingParticipant } = await supabase
         .from("participants")
-        .select()
+        .select("id, name, password")
         .eq("pool_id", pool.id)
         .eq("name", participantName)
         .single()
 
       if (existingParticipant) {
-        // Just log them in
+        // User exists - verify password
+        if (existingParticipant.password !== participantPassword) {
+          throw new Error("Senha incorreta. Se voce esqueceu sua senha, entre em contato com o administrador.")
+        }
+        // Password correct - log them in
         localStorage.setItem("participant_id", existingParticipant.id)
         localStorage.setItem("participant_name", existingParticipant.name)
         localStorage.setItem("pool_id", pool.id)
@@ -166,12 +174,13 @@ export default function HomePage() {
         return
       }
 
-      // Create new participant
+      // Create new participant with password
       const { data: participant, error: participantError } = await supabase
         .from("participants")
         .insert({
           pool_id: pool.id,
           name: participantName,
+          password: participantPassword,
         })
         .select()
         .single()
@@ -252,19 +261,20 @@ export default function HomePage() {
                       />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="poolPassword" className="flex items-center gap-2">
+                      <Label htmlFor="adminPassword" className="flex items-center gap-2">
                         <Lock className="h-4 w-4" />
-                        Senha do Bolao (opcional)
+                        Sua Senha
                       </Label>
                       <Input
-                        id="poolPassword"
+                        id="adminPassword"
                         type="password"
-                        placeholder="Deixe vazio para sem senha"
-                        value={poolPassword}
-                        onChange={(e) => setPoolPassword(e.target.value)}
+                        placeholder="Crie uma senha para sua conta"
+                        value={adminPassword}
+                        onChange={(e) => setAdminPassword(e.target.value)}
+                        required
                       />
                       <span className="text-xs text-muted-foreground">
-                        Se definida, os participantes precisarao da senha para entrar
+                        Voce precisara desta senha para acessar sua conta
                       </span>
                     </div>
 
@@ -372,8 +382,6 @@ export default function HomePage() {
                           onChange={(e) => {
                             setInviteCode(e.target.value.toUpperCase())
                             setPoolInfo(null)
-                            setPoolRequiresPassword(false)
-                            setJoinPassword("")
                           }}
                           maxLength={6}
                           required
@@ -393,12 +401,6 @@ export default function HomePage() {
                       <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                         <p className="text-sm font-medium">Bolao: {poolInfo.name}</p>
                         <p className="text-xs text-muted-foreground">Criado por: {poolInfo.admin_name}</p>
-                        {poolRequiresPassword && (
-                          <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
-                            <Lock className="h-3 w-3" />
-                            Este bolao requer senha
-                          </p>
-                        )}
                       </div>
                     )}
 
@@ -413,22 +415,23 @@ export default function HomePage() {
                       />
                     </div>
 
-                    {poolRequiresPassword && (
-                      <div className="flex flex-col gap-2">
-                        <Label htmlFor="joinPassword" className="flex items-center gap-2">
-                          <Lock className="h-4 w-4" />
-                          Senha do Bolao
-                        </Label>
-                        <Input
-                          id="joinPassword"
-                          type="password"
-                          placeholder="Digite a senha do bolao"
-                          value={joinPassword}
-                          onChange={(e) => setJoinPassword(e.target.value)}
-                          required
-                        />
-                      </div>
-                    )}
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="participantPassword" className="flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        Sua Senha
+                      </Label>
+                      <Input
+                        id="participantPassword"
+                        type="password"
+                        placeholder="Crie ou digite sua senha"
+                        value={participantPassword}
+                        onChange={(e) => setParticipantPassword(e.target.value)}
+                        required
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        Novo usuario? Crie uma senha. Ja tem conta? Digite sua senha.
+                      </span>
+                    </div>
 
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? "Entrando..." : "Entrar no Bolao"}

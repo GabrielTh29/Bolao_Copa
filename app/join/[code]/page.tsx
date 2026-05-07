@@ -14,7 +14,6 @@ interface Pool {
   name: string
   admin_name: string
   invite_code: string
-  password: string | null
 }
 
 export default function JoinPoolPage() {
@@ -51,13 +50,7 @@ export default function JoinPoolPage() {
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!pool || !name.trim()) return
-
-    // Verify password if required
-    if (pool.password && pool.password !== password) {
-      setError("Senha incorreta")
-      return
-    }
+    if (!pool || !name.trim() || !password.trim()) return
 
     setJoining(true)
     setError("")
@@ -71,8 +64,6 @@ export default function JoinPoolPage() {
 
       if (response.ok) {
         const participant = await response.json()
-        // Store participant info in localStorage for session
-        // Usar o mesmo formato que o pool-dashboard espera
         localStorage.setItem("participant_id", participant.id)
         localStorage.setItem("participant_name", participant.name)
         localStorage.setItem("pool_id", pool.id)
@@ -159,26 +150,27 @@ export default function JoinPoolPage() {
                   />
                 </div>
 
-                {pool.password && (
-                  <div className="space-y-2">
-                    <Label htmlFor="password" className="flex items-center gap-2">
-                      <Lock className="h-4 w-4" />
-                      Senha do Bolao
-                    </Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Digite a senha do bolao"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Sua Senha
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Crie ou digite sua senha"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Novo usuario? Crie uma senha. Ja tem conta? Digite sua senha.
+                  </span>
+                </div>
 
                 {error && <p className="text-sm text-destructive">{error}</p>}
 
-                <Button type="submit" className="w-full" disabled={joining || !name.trim() || (!!pool.password && !password.trim())}>
+                <Button type="submit" className="w-full" disabled={joining || !name.trim() || !password.trim()}>
                   {joining ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

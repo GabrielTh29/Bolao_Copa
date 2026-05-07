@@ -56,14 +56,39 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
         setCurrentParticipantName(participantName)
         loadPredictions(participantId)
       } else {
-        // Participante nao existe mais neste bolao
-        setShowSelectParticipant(true)
+        // O participante pode ter acabado de entrar e nao estar na lista inicial
+        // Verificar se o ID do participante e um UUID valido antes de usar
+        // Se sim, assumir que e um usuario novo e aceitar
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        if (participantId && participantName && uuidRegex.test(participantId)) {
+          // Usuario novo que acabou de entrar - aceitar e recarregar participantes
+          setCurrentParticipantId(participantId)
+          setCurrentParticipantName(participantName)
+          loadPredictions(participantId)
+          // Atualizar a lista de participantes para incluir o novo
+          refreshParticipants()
+        } else {
+          // Participante nao existe mais neste bolao
+          setShowSelectParticipant(true)
+        }
       }
     } else {
       // Nao tem sessao ou e de outro bolao - mostrar selecao
       setShowSelectParticipant(true)
     }
   }, [pool.id, initialParticipants])
+
+  const refreshParticipants = async () => {
+    const { data } = await supabase
+      .from("participants")
+      .select("*")
+      .eq("pool_id", pool.id)
+      .order("created_at", { ascending: true })
+    
+    if (data) {
+      setParticipants(data)
+    }
+  }
 
   const loadPredictions = async (participantId: string) => {
     const { data } = await supabase

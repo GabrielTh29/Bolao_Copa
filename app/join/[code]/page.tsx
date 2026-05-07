@@ -64,13 +64,10 @@ export default function JoinPoolPage() {
       if (response.ok) {
         const participant = await response.json()
         // Store participant info in localStorage for session
-        localStorage.setItem(
-          `pool_${pool.id}_participant`,
-          JSON.stringify({
-            id: participant.id,
-            name: participant.name,
-          })
-        )
+        // Usar o mesmo formato que o pool-dashboard espera
+        localStorage.setItem("participant_id", participant.id)
+        localStorage.setItem("participant_name", participant.name)
+        localStorage.setItem("pool_id", pool.id)
         router.push(`/pool/${pool.id}`)
       } else {
         const data = await response.json()

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Trophy, ArrowRight, Settings2, ChevronDown, ChevronUp } from "lucide-react"
+import { Trophy, ArrowRight, Settings2, ChevronDown, ChevronUp, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,6 +29,7 @@ export default function HomePage() {
   // Create pool form
   const [poolName, setPoolName] = useState("")
   const [adminName, setAdminName] = useState("")
+  const [poolPassword, setPoolPassword] = useState("")
   const [showPointsConfig, setShowPointsConfig] = useState(false)
   const [pointsExact, setPointsExact] = useState(10)
   const [pointsResultOneScore, setPointsResultOneScore] = useState(5)
@@ -39,6 +40,9 @@ export default function HomePage() {
   // Join pool form
   const [inviteCode, setInviteCode] = useState("")
   const [participantName, setParticipantName] = useState("")
+  const [joinPassword, setJoinPassword] = useState("")
+  const [poolRequiresPassword, setPoolRequiresPassword] = useState(false)
+  const [poolInfo, setPoolInfo] = useState<{ id: string; name: string; admin_name: string; password: string | null } | null>(null)
 
   const handleCreatePool = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,6 +63,7 @@ export default function HomePage() {
           points_result_goal_diff: pointsResultGoalDiff,
           points_result_only: pointsResultOnly,
           points_exact_opposite: pointsExactOpposite,
+          password: poolPassword.trim() || null,
         })
         .select()
         .single()
@@ -90,21 +95,58 @@ export default function HomePage() {
     }
   }
 
+  const handleCheckPool = async () => {
+    if (!inviteCode.trim()) return
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const { data: pool, error: poolError } = await supabase
+        .from("pools")
+        .select("id, name, admin_name, password")
+        .eq("invite_code", inviteCode.toUpperCase())
+        .single()
+
+      if (poolError || !pool) {
+        throw new Error("Codigo de convite invalido")
+      }
+
+      setPoolInfo(pool)
+      setPoolRequiresPassword(!!pool.password)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao buscar bolao")
+      setPoolInfo(null)
+      setPoolRequiresPassword(false)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleJoinPool = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
 
     try {
-      // Find pool by invite code
-      const { data: pool, error: poolError } = await supabase
-        .from("pools")
-        .select()
-        .eq("invite_code", inviteCode.toUpperCase())
-        .single()
+      // If we don't have pool info yet, fetch it first
+      let pool = poolInfo
+      if (!pool) {
+        const { data, error: poolError } = await supabase
+          .from("pools")
+          .select("id, name, admin_name, password")
+          .eq("invite_code", inviteCode.toUpperCase())
+          .single()
 
-      if (poolError || !pool) {
-        throw new Error("Codigo de convite invalido")
+        if (poolError || !data) {
+          throw new Error("Codigo de convite invalido")
+        }
+        pool = data
+      }
+
+      // Verify password if pool has one
+      if (pool.password && pool.password !== joinPassword) {
+        throw new Error("Senha incorreta")
       }
 
       // Check if participant already exists
@@ -209,6 +251,22 @@ export default function HomePage() {
                         required
                       />
                     </div>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="poolPassword" className="flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        Senha do Bolao (opcional)
+                      </Label>
+                      <Input
+                        id="poolPassword"
+                        type="password"
+                        placeholder="Deixe vazio para sem senha"
+                        value={poolPassword}
+                        onChange={(e) => setPoolPassword(e.target.value)}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        Se definida, os participantes precisarao da senha para entrar
+                      </span>
+                    </div>
 
                     {/* Points Configuration Toggle */}
                     <button
@@ -306,15 +364,44 @@ export default function HomePage() {
                   <form onSubmit={handleJoinPool} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="inviteCode">Código de Convite</Label>
-                      <Input
-                        id="inviteCode"
-                        placeholder="Ex: ABC123"
-                        value={inviteCode}
-                        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                        maxLength={6}
-                        required
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="inviteCode"
+                          placeholder="Ex: ABC123"
+                          value={inviteCode}
+                          onChange={(e) => {
+                            setInviteCode(e.target.value.toUpperCase())
+                            setPoolInfo(null)
+                            setPoolRequiresPassword(false)
+                            setJoinPassword("")
+                          }}
+                          maxLength={6}
+                          required
+                        />
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={handleCheckPool}
+                          disabled={isLoading || inviteCode.length < 6}
+                        >
+                          Verificar
+                        </Button>
+                      </div>
                     </div>
+
+                    {poolInfo && (
+                      <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                        <p className="text-sm font-medium">Bolao: {poolInfo.name}</p>
+                        <p className="text-xs text-muted-foreground">Criado por: {poolInfo.admin_name}</p>
+                        {poolRequiresPassword && (
+                          <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
+                            <Lock className="h-3 w-3" />
+                            Este bolao requer senha
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="participantName">Seu Nome</Label>
                       <Input
@@ -325,6 +412,24 @@ export default function HomePage() {
                         required
                       />
                     </div>
+
+                    {poolRequiresPassword && (
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="joinPassword" className="flex items-center gap-2">
+                          <Lock className="h-4 w-4" />
+                          Senha do Bolao
+                        </Label>
+                        <Input
+                          id="joinPassword"
+                          type="password"
+                          placeholder="Digite a senha do bolao"
+                          value={joinPassword}
+                          onChange={(e) => setJoinPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+                    )}
+
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? "Entrando..." : "Entrar no Bolao"}
                       <ArrowRight className="ml-2 h-4 w-4" />

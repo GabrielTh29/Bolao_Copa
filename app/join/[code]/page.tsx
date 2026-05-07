@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Trophy, Users, ArrowLeft, Loader2 } from "lucide-react"
+import { Trophy, Users, ArrowLeft, Loader2, Lock } from "lucide-react"
 import Link from "next/link"
 
 interface Pool {
@@ -14,6 +14,7 @@ interface Pool {
   name: string
   admin_name: string
   invite_code: string
+  password: string | null
 }
 
 export default function JoinPoolPage() {
@@ -23,6 +24,7 @@ export default function JoinPoolPage() {
 
   const [pool, setPool] = useState<Pool | null>(null)
   const [name, setName] = useState("")
+  const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(true)
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState("")
@@ -51,6 +53,12 @@ export default function JoinPoolPage() {
     e.preventDefault()
     if (!pool || !name.trim()) return
 
+    // Verify password if required
+    if (pool.password && pool.password !== password) {
+      setError("Senha incorreta")
+      return
+    }
+
     setJoining(true)
     setError("")
 
@@ -58,7 +66,7 @@ export default function JoinPoolPage() {
       const response = await fetch(`/api/pools/${pool.id}/participants`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), password: password }),
       })
 
       if (response.ok) {
@@ -151,9 +159,26 @@ export default function JoinPoolPage() {
                   />
                 </div>
 
+                {pool.password && (
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="flex items-center gap-2">
+                      <Lock className="h-4 w-4" />
+                      Senha do Bolao
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Digite a senha do bolao"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+
                 {error && <p className="text-sm text-destructive">{error}</p>}
 
-                <Button type="submit" className="w-full" disabled={joining || !name.trim()}>
+                <Button type="submit" className="w-full" disabled={joining || !name.trim() || (!!pool.password && !password.trim())}>
                   {joining ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -7,17 +7,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params
   const body = await request.json()
 
-  const { name } = body
+  const { name, password } = body
 
   if (!name) {
     return NextResponse.json({ error: "Nome e obrigatorio" }, { status: 400 })
   }
 
-  // Check if pool exists
-  const { data: pool, error: poolError } = await supabase.from("pools").select("id").eq("id", id).single()
+  // Check if pool exists and get password
+  const { data: pool, error: poolError } = await supabase.from("pools").select("id, password").eq("id", id).single()
 
   if (poolError || !pool) {
     return NextResponse.json({ error: "Bolao nao encontrado" }, { status: 404 })
+  }
+
+  // Verify password if pool has one
+  if (pool.password && pool.password !== password) {
+    return NextResponse.json({ error: "Senha incorreta" }, { status: 401 })
   }
 
   // Check if participant already exists

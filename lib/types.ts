@@ -9,6 +9,7 @@ export interface Pool {
   points_result_goal_diff: number
   points_result_only: number
   points_exact_opposite: number
+  password: string | null
 }
 
 export interface PointsConfig {

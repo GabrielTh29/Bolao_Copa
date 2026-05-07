@@ -48,6 +48,7 @@ export async function POST(request: Request) {
   const { 
     name, 
     admin_name,
+    admin_password,
     points_exact = 10,
     points_result_one_score = 5,
     points_result_goal_diff = 4,
@@ -57,6 +58,10 @@ export async function POST(request: Request) {
 
   if (!name || !admin_name) {
     return NextResponse.json({ error: "Nome do bolao e nome do administrador sao obrigatorios" }, { status: 400 })
+  }
+
+  if (!admin_password) {
+    return NextResponse.json({ error: "Senha do administrador e obrigatoria" }, { status: 400 })
   }
 
   // Generate unique invite code
@@ -90,10 +95,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Also add admin as first participant
+  // Also add admin as first participant with password
   await supabase.from("participants").insert({
     pool_id: data.id,
     name: admin_name,
+    password: admin_password,
   })
 
   return NextResponse.json(data, { status: 201 })

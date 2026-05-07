@@ -7,10 +7,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params
   const body = await request.json()
 
-  const { name } = body
+  const { name, password } = body
 
   if (!name) {
     return NextResponse.json({ error: "Nome e obrigatorio" }, { status: 400 })
+  }
+
+  if (!password) {
+    return NextResponse.json({ error: "Senha e obrigatoria" }, { status: 400 })
   }
 
   // Check if pool exists
@@ -23,20 +27,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // Check if participant already exists
   const { data: existing } = await supabase
     .from("participants")
-    .select("id")
+    .select("id, name, password")
     .eq("pool_id", id)
     .eq("name", name)
     .single()
 
   if (existing) {
-    return NextResponse.json({ error: "Ja existe um participante com esse nome neste bolao" }, { status: 400 })
+    // User exists - verify password
+    if (existing.password !== password) {
+      return NextResponse.json({ error: "Senha incorreta. Se voce esqueceu sua senha, entre em contato com o administrador." }, { status: 401 })
+    }
+    // Password correct - return existing participant
+    return NextResponse.json({ id: existing.id, name: existing.name }, { status: 200 })
   }
 
+  // Create new participant with password
   const { data, error } = await supabase
     .from("participants")
     .insert({
       pool_id: id,
       name,
+      password,
     })
     .select()
     .single()

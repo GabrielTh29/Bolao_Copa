@@ -274,7 +274,7 @@ export default function HomePage() {
                         required
                       />
                       <span className="text-xs text-muted-foreground">
-                        Voce precisara desta senha para acessar sua conta
+                        Voce precisará desta senha para acessar sua conta
                       </span>
                     </div>
 
@@ -399,7 +399,7 @@ export default function HomePage() {
 
                     {poolInfo && (
                       <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                        <p className="text-sm font-medium">Bolao: {poolInfo.name}</p>
+                        <p className="text-sm font-medium">Bolão: {poolInfo.name}</p>
                         <p className="text-xs text-muted-foreground">Criado por: {poolInfo.admin_name}</p>
                       </div>
                     )}
@@ -429,7 +429,7 @@ export default function HomePage() {
                         required
                       />
                       <span className="text-xs text-muted-foreground">
-                        Novo usuario? Crie uma senha. Ja tem conta? Digite sua senha.
+                        Novo usuário? Crie uma senha. Já tem conta? Digite sua senha.
                       </span>
                     </div>
 

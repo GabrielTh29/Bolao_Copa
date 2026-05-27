@@ -1,9 +1,15 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import { verifyPassword, isBcryptHash, hashPassword } from "@/lib/auth"
+import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit"
 
 // GET - Get predictions for a participant
 export async function GET(request: Request) {
+  // Rate limit check
+  const ip = getClientIdentifier(request)
+  const { success, response } = await checkRateLimit(ip, "api")
+  if (!success && response) return response
+  
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
   const participantId = searchParams.get("participant_id")
@@ -50,6 +56,11 @@ export async function GET(request: Request) {
 
 // POST - Create or update a prediction (requires participant authentication)
 export async function POST(request: Request) {
+  // Rate limit check for predictions
+  const ip = getClientIdentifier(request)
+  const { success, response } = await checkRateLimit(ip, "predictions")
+  if (!success && response) return response
+  
   const supabase = await createClient()
   const body = await request.json()
 

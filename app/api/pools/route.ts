@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import { hashPassword, verifyPassword, isBcryptHash } from "@/lib/auth"
+import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit"
 
 // Generate a random invite code
 function generateInviteCode(): string {
@@ -14,6 +15,11 @@ function generateInviteCode(): string {
 
 // GET - List all pools or get pool by invite code
 export async function GET(request: Request) {
+  // Rate limit check
+  const ip = getClientIdentifier(request)
+  const { success, response } = await checkRateLimit(ip, "api")
+  if (!success && response) return response
+  
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
   const inviteCode = searchParams.get("invite_code")
@@ -43,6 +49,11 @@ export async function GET(request: Request) {
 
 // POST - Create a new pool
 export async function POST(request: Request) {
+  // Rate limit check
+  const ip = getClientIdentifier(request)
+  const { success, response } = await checkRateLimit(ip, "api")
+  if (!success && response) return response
+  
   const supabase = await createClient()
   const body = await request.json()
 
@@ -123,6 +134,11 @@ export async function POST(request: Request) {
 
 // PATCH - Update pool settings (requires admin authentication)
 export async function PATCH(request: Request) {
+  // Rate limit check
+  const ip = getClientIdentifier(request)
+  const { success, response } = await checkRateLimit(ip, "api")
+  if (!success && response) return response
+  
   const supabase = await createClient()
   const body = await request.json()
 

@@ -8,9 +8,15 @@ import {
   COMPETITIONS,
   type CompetitionCode,
 } from "@/lib/football-data"
+import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit"
 
 // POST - Sync matches and teams from Football-Data.org
 export async function POST(request: Request) {
+  // Rate limit check for sync (heavy operation)
+  const ip = getClientIdentifier(request)
+  const { success, response } = await checkRateLimit(ip, "sync")
+  if (!success && response) return response
+  
   try {
     const body = await request.json().catch(() => ({}))
     const competition = (body.competition || COMPETITIONS.WORLD_CUP) as CompetitionCode

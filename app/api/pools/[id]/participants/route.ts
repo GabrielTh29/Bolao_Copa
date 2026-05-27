@@ -1,9 +1,15 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import { hashPassword, verifyPassword, isBcryptHash } from "@/lib/auth"
+import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit"
 
 // POST - Join a pool
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  // Rate limit check for auth endpoints
+  const ip = getClientIdentifier(request)
+  const { success, response } = await checkRateLimit(ip, "auth")
+  if (!success && response) return response
+  
   const supabase = await createClient()
   const { id } = await params
   const body = await request.json()

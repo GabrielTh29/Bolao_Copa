@@ -64,9 +64,24 @@ export default function JoinPoolPage() {
 
       if (response.ok) {
         const participant = await response.json()
-        localStorage.setItem("participant_id", participant.id)
-        localStorage.setItem("participant_name", participant.name)
-        localStorage.setItem("pool_id", pool.id)
+        
+        // Create session with HTTP-only cookie
+        const sessionResponse = await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            participantId: participant.id,
+            participantName: participant.name,
+            poolId: pool.id,
+            password: password,
+          }),
+        })
+        
+        if (!sessionResponse.ok) {
+          setError("Erro ao criar sessao")
+          return
+        }
+        
         router.push(`/pool/${pool.id}`)
       } else {
         const data = await response.json()

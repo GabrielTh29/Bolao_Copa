@@ -2,11 +2,10 @@
 
 import { useState } from "react"
 import { Calendar, Clock, Check, X } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import type { Match, Prediction } from "@/lib/types"
 
@@ -18,11 +17,11 @@ interface MatchListProps {
 }
 
 export function MatchList({ matches, predictions, currentParticipantId, onPredictionUpdate }: MatchListProps) {
-  const supabase = createClient()
   const [editingMatch, setEditingMatch] = useState<string | null>(null)
   const [homeScore, setHomeScore] = useState("")
   const [awayScore, setAwayScore] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const getPrediction = (matchId: string) => {
     return predictions.find(p => p.match_id === matchId)
@@ -61,31 +60,32 @@ export function MatchList({ matches, predictions, currentParticipantId, onPredic
     if (!currentParticipantId) return
     
     setIsSubmitting(true)
+    setError(null)
+    
     try {
-      const existing = getPrediction(matchId)
+      // The API will get the password from the HTTP-only session cookie
+      const response = await fetch("/api/predictions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          participant_id: currentParticipantId,
+          match_id: matchId,
+          home_score: parseInt(homeScore),
+          away_score: parseInt(awayScore),
+        }),
+      })
       
-      if (existing) {
-        await supabase
-          .from("predictions")
-          .update({
-            home_score: parseInt(homeScore),
-            away_score: parseInt(awayScore),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id)
-      } else {
-        await supabase
-          .from("predictions")
-          .insert({
-            participant_id: currentParticipantId,
-            match_id: matchId,
-            home_score: parseInt(homeScore),
-            away_score: parseInt(awayScore),
-          })
+      const data = await response.json()
+      
+      if (!response.ok) {
+        setError(data.error || "Erro ao salvar palpite")
+        return
       }
       
       onPredictionUpdate()
       cancelEditing()
+    } catch (err) {
+      setError("Erro ao salvar palpite. Tente novamente.")
     } finally {
       setIsSubmitting(false)
     }
@@ -224,7 +224,11 @@ export function MatchList({ matches, predictions, currentParticipantId, onPredic
                     
                     {/* Actions */}
                     {canPredict(match) && currentParticipantId && (
-                      <div className="mt-4 flex justify-center gap-2">
+                      <div className="mt-4 flex flex-col items-center gap-2">
+                        {isEditing && error && (
+                          <p className="text-sm text-destructive">{error}</p>
+                        )}
+                        <div className="flex gap-2">
                         {isEditing ? (
                           <>
                             <Button
@@ -253,6 +257,7 @@ export function MatchList({ matches, predictions, currentParticipantId, onPredic
                             {prediction ? "Editar Palpite" : "Fazer Palpite"}
                           </Button>
                         )}
+                        </div>
                       </div>
                     )}
                     

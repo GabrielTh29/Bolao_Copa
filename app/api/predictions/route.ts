@@ -1,8 +1,17 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { verifyPassword, isBcryptHash, hashPassword } from "@/lib/auth"
+import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit"
+import { getSession } from "@/lib/session"
+import { cookies } from "next/headers"
 
 // GET - Get predictions for a participant
 export async function GET(request: Request) {
+  // Rate limit check
+  const ip = getClientIdentifier(request)
+  const { success, response } = await checkRateLimit(ip, "api")
+  if (!success && response) return response
+  
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
   const participantId = searchParams.get("participant_id")
@@ -47,15 +56,76 @@ export async function GET(request: Request) {
   return NextResponse.json(data)
 }
 
-// POST - Create or update a prediction
+// POST - Create or update a prediction (requires participant authentication)
 export async function POST(request: Request) {
+  // Rate limit check for predictions
+  const ip = getClientIdentifier(request)
+  const { success, response } = await checkRateLimit(ip, "predictions")
+  if (!success && response) return response
+  
   const supabase = await createClient()
   const body = await request.json()
 
-  const { participant_id, match_id, home_score, away_score } = body
+  const { participant_id, participant_password, match_id, home_score, away_score } = body
 
   if (!participant_id || !match_id || home_score === undefined || away_score === undefined) {
     return NextResponse.json({ error: "Todos os campos sao obrigatorios" }, { status: 400 })
+  }
+
+  // Try to get password from session cookie first, then from request body
+  let passwordToVerify = participant_password
+  
+  if (!passwordToVerify) {
+    const cookieStore = await cookies()
+    const session = await getSession(cookieStore)
+    if (session && session.participantId === participant_id) {
+      passwordToVerify = session.password
+    }
+  }
+
+  // Require password for authentication
+  if (!passwordToVerify) {
+    return NextResponse.json({ error: "Sessao expirada. Por favor, faca login novamente." }, { status: 401 })
+  }
+
+  // Validate scores are non-negative integers
+  if (!Number.isInteger(home_score) || !Number.isInteger(away_score) || home_score < 0 || away_score < 0) {
+    return NextResponse.json({ error: "Placares devem ser numeros inteiros nao negativos" }, { status: 400 })
+  }
+
+  // Verify participant exists and authenticate
+  const { data: participant, error: participantError } = await supabase
+    .from("participants")
+    .select("id, password_hash")
+    .eq("id", participant_id)
+    .single()
+
+  if (participantError || !participant) {
+    return NextResponse.json({ error: "Participante nao encontrado" }, { status: 404 })
+  }
+
+  if (!participant.password_hash) {
+    return NextResponse.json({ error: "Erro de autenticacao" }, { status: 401 })
+  }
+
+  // Verify password
+  let isValid = false
+  if (isBcryptHash(participant.password_hash)) {
+    isValid = await verifyPassword(passwordToVerify, participant.password_hash)
+  } else {
+    // Legacy plaintext password - verify and migrate
+    isValid = participant.password_hash === passwordToVerify
+    if (isValid) {
+      const newHash = await hashPassword(passwordToVerify)
+      await supabase
+        .from("participants")
+        .update({ password_hash: newHash })
+        .eq("id", participant.id)
+    }
+  }
+
+  if (!isValid) {
+    return NextResponse.json({ error: "Senha incorreta" }, { status: 401 })
   }
 
   // Check if match hasn't started yet

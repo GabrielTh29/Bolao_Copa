@@ -117,6 +117,7 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
   const handleLogout = () => {
     localStorage.removeItem("participant_id")
     localStorage.removeItem("participant_name")
+    localStorage.removeItem("participant_password")
     localStorage.removeItem("pool_id")
     router.push("/")
   }
@@ -140,11 +141,21 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
   const savePointsConfig = async () => {
     setSavingPoints(true)
     try {
+      // Get admin password for authentication
+      const adminPassword = localStorage.getItem("participant_password")
+      
+      if (!adminPassword) {
+        console.error("Senha nao encontrada. Faca login novamente.")
+        return
+      }
+      
       const response = await fetch("/api/pools", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pool_id: pool.id,
+          admin_name: currentParticipantName,
+          admin_password: adminPassword,
           points_exact: pointsExact,
           points_result_one_score: pointsResultOneScore,
           points_result_goal_diff: pointsResultGoalDiff,

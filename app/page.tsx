@@ -7,21 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-
-function generateInviteCode(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-  let code = ""
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return code
-}
 
 export default function HomePage() {
   const router = useRouter()
-  const supabase = createClient()
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -48,51 +37,57 @@ export default function HomePage() {
     setIsLoading(true)
     setError(null)
 
-    if (!adminPassword.trim()) {
-      setError("Senha e obrigatoria")
+    if (!adminPassword.trim() || adminPassword.length < 4) {
+      setError("Senha deve ter pelo menos 4 caracteres")
       setIsLoading(false)
       return
     }
 
     try {
-      const code = generateInviteCode()
-
-      const { data: pool, error: poolError } = await supabase
-        .from("pools")
-        .insert({
+      const response = await fetch("/api/pools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           name: poolName,
-          invite_code: code,
           admin_name: adminName,
+          admin_password: adminPassword,
           points_exact: pointsExact,
           points_result_one_score: pointsResultOneScore,
           points_result_goal_diff: pointsResultGoalDiff,
           points_result_only: pointsResultOnly,
           points_exact_opposite: pointsExactOpposite,
-        })
-        .select()
-        .single()
+        }),
+      })
 
-      if (poolError) throw poolError
+      const data = await response.json()
 
-      // Add admin as first participant with password
-      const { data: participant, error: participantError } = await supabase
-        .from("participants")
-        .insert({
-          pool_id: pool.id,
+      if (!response.ok) {
+        throw new Error(data.error || "Erro ao criar bolao")
+      }
+
+      // Get the admin participant that was created with the pool
+      const participantsResponse = await fetch(`/api/pools/${data.id}/participants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           name: adminName,
           password: adminPassword,
-        })
-        .select()
-        .single()
+        }),
+      })
 
-      if (participantError) throw participantError
+      const participant = await participantsResponse.json()
+
+      if (!participantsResponse.ok) {
+        throw new Error(participant.error || "Erro ao registrar participante")
+      }
 
       // Store participant in localStorage for session
       localStorage.setItem("participant_id", participant.id)
       localStorage.setItem("participant_name", participant.name)
-      localStorage.setItem("pool_id", pool.id)
+      localStorage.setItem("participant_password", adminPassword)
+      localStorage.setItem("pool_id", data.id)
 
-      router.push(`/pool/${pool.id}`)
+      router.push(`/pool/${data.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar bolao")
     } finally {
@@ -107,17 +102,14 @@ export default function HomePage() {
     setError(null)
 
     try {
-      const { data: pool, error: poolError } = await supabase
-        .from("pools")
-        .select("id, name, admin_name")
-        .eq("invite_code", inviteCode.toUpperCase())
-        .single()
+      const response = await fetch(`/api/pools?invite_code=${inviteCode.toUpperCase()}`)
+      const data = await response.json()
 
-      if (poolError || !pool) {
+      if (!response.ok || !data) {
         throw new Error("Codigo de convite invalido")
       }
 
-      setPoolInfo(pool)
+      setPoolInfo(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao buscar bolao")
       setPoolInfo(null)
@@ -131,8 +123,8 @@ export default function HomePage() {
     setIsLoading(true)
     setError(null)
 
-    if (!participantPassword.trim()) {
-      setError("Senha e obrigatoria")
+    if (!participantPassword.trim() || participantPassword.length < 4) {
+      setError("Senha deve ter pelo menos 4 caracteres")
       setIsLoading(false)
       return
     }
@@ -141,54 +133,35 @@ export default function HomePage() {
       // If we don't have pool info yet, fetch it first
       let pool = poolInfo
       if (!pool) {
-        const { data, error: poolError } = await supabase
-          .from("pools")
-          .select("id, name, admin_name")
-          .eq("invite_code", inviteCode.toUpperCase())
-          .single()
+        const response = await fetch(`/api/pools?invite_code=${inviteCode.toUpperCase()}`)
+        const data = await response.json()
 
-        if (poolError || !data) {
+        if (!response.ok || !data) {
           throw new Error("Codigo de convite invalido")
         }
         pool = data
+        setPoolInfo(data)
       }
 
-      // Check if participant already exists
-      const { data: existingParticipant } = await supabase
-        .from("participants")
-        .select("id, name, password")
-        .eq("pool_id", pool.id)
-        .eq("name", participantName)
-        .single()
-
-      if (existingParticipant) {
-        // User exists - verify password
-        if (existingParticipant.password !== participantPassword) {
-          throw new Error("Senha incorreta. Se voce esqueceu sua senha, entre em contato com o administrador.")
-        }
-        // Password correct - log them in
-        localStorage.setItem("participant_id", existingParticipant.id)
-        localStorage.setItem("participant_name", existingParticipant.name)
-        localStorage.setItem("pool_id", pool.id)
-        router.push(`/pool/${pool.id}`)
-        return
-      }
-
-      // Create new participant with password
-      const { data: participant, error: participantError } = await supabase
-        .from("participants")
-        .insert({
-          pool_id: pool.id,
+      // Join pool through secure API
+      const joinResponse = await fetch(`/api/pools/${pool.id}/participants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           name: participantName,
           password: participantPassword,
-        })
-        .select()
-        .single()
+        }),
+      })
 
-      if (participantError) throw participantError
+      const participant = await joinResponse.json()
+
+      if (!joinResponse.ok) {
+        throw new Error(participant.error || "Erro ao entrar no bolao")
+      }
 
       localStorage.setItem("participant_id", participant.id)
       localStorage.setItem("participant_name", participant.name)
+      localStorage.setItem("participant_password", participantPassword)
       localStorage.setItem("pool_id", pool.id)
 
       router.push(`/pool/${pool.id}`)
@@ -208,10 +181,10 @@ export default function HomePage() {
           <div className="flex flex-col items-center text-center gap-6">
             <div className="flex items-center gap-3">
               <Trophy className="h-12 w-12 text-secondary" />
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Bolão da Copa 2026 :)</h1>
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Bolao da Copa 2026 :)</h1>
             </div>
             <p className="text-lg md:text-xl max-w-2xl text-primary-foreground/90">
-              Diversão e Alegria nas pernas! Mostra tua força, Brasil!!!
+              Diversao e Alegria nas pernas! Mostra tua forca, Brasil!!!
             </p>
           </div>
         </div>
@@ -223,7 +196,7 @@ export default function HomePage() {
           <Card>
             <CardHeader className="text-center">
               <CardTitle>Comece Agora</CardTitle>
-              <CardDescription>Crie um novo bolão ou entre em um existente</CardDescription>
+              <CardDescription>Crie um novo bolao ou entre em um existente</CardDescription>
             </CardHeader>
             <CardContent>
               {error && (
@@ -241,7 +214,7 @@ export default function HomePage() {
                 <TabsContent value="create" className="mt-6">
                   <form onSubmit={handleCreatePool} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="poolName">Nome do Bolão</Label>
+                      <Label htmlFor="poolName">Nome do Bolao</Label>
                       <Input
                         id="poolName"
                         placeholder="Ex: Bolao da Familia"
@@ -268,13 +241,14 @@ export default function HomePage() {
                       <Input
                         id="adminPassword"
                         type="password"
-                        placeholder="Crie uma senha para sua conta"
+                        placeholder="Crie uma senha (min. 4 caracteres)"
                         value={adminPassword}
                         onChange={(e) => setAdminPassword(e.target.value)}
+                        minLength={4}
                         required
                       />
                       <span className="text-xs text-muted-foreground">
-                        Voce precisará desta senha para acessar sua conta
+                        Voce precisara desta senha para acessar sua conta
                       </span>
                     </div>
 
@@ -285,7 +259,7 @@ export default function HomePage() {
                       className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <Settings2 className="h-4 w-4" />
-                      Configurar pontuação
+                      Configurar pontuacao
                       {showPointsConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </button>
 
@@ -332,7 +306,7 @@ export default function HomePage() {
                             />
                           </div>
                           <div className="flex flex-col gap-1">
-                            <Label htmlFor="pointsResultOnly" className="text-xs">Só resultado</Label>
+                            <Label htmlFor="pointsResultOnly" className="text-xs">So resultado</Label>
                             <Input
                               id="pointsResultOnly"
                               type="number"
@@ -354,7 +328,7 @@ export default function HomePage() {
                               onChange={(e) => setPointsExactOpposite(Number(e.target.value))}
                               className="text-center border-destructive/50"
                             />
-                            <span className="text-xs text-muted-foreground">Ex: palpite 2x1, resultado 1x2 (não vale empate)</span>
+                            <span className="text-xs text-muted-foreground">Ex: palpite 2x1, resultado 1x2 (nao vale empate)</span>
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -373,7 +347,7 @@ export default function HomePage() {
                 <TabsContent value="join" className="mt-6">
                   <form onSubmit={handleJoinPool} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="inviteCode">Código de Convite</Label>
+                      <Label htmlFor="inviteCode">Codigo de Convite</Label>
                       <div className="flex gap-2">
                         <Input
                           id="inviteCode"
@@ -399,7 +373,7 @@ export default function HomePage() {
 
                     {poolInfo && (
                       <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                        <p className="text-sm font-medium">Bolão: {poolInfo.name}</p>
+                        <p className="text-sm font-medium">Bolao: {poolInfo.name}</p>
                         <p className="text-xs text-muted-foreground">Criado por: {poolInfo.admin_name}</p>
                       </div>
                     )}
@@ -423,13 +397,14 @@ export default function HomePage() {
                       <Input
                         id="participantPassword"
                         type="password"
-                        placeholder="Crie ou digite sua senha"
+                        placeholder="Crie ou digite sua senha (min. 4 caracteres)"
                         value={participantPassword}
                         onChange={(e) => setParticipantPassword(e.target.value)}
+                        minLength={4}
                         required
                       />
                       <span className="text-xs text-muted-foreground">
-                        Novo usuário? Crie uma senha. Já tem conta? Digite sua senha.
+                        Novo usuario? Crie uma senha. Ja tem conta? Digite sua senha.
                       </span>
                     </div>
 
@@ -448,7 +423,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="py-6 border-t">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          Bolão da Copa 2026
+          Bolao da Copa 2026
         </div>
       </footer>
     </div>

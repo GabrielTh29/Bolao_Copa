@@ -66,6 +66,7 @@ export default function JoinPoolPage() {
         const participant = await response.json()
         localStorage.setItem("participant_id", participant.id)
         localStorage.setItem("participant_name", participant.name)
+        localStorage.setItem("participant_password", password)
         localStorage.setItem("pool_id", pool.id)
         router.push(`/pool/${pool.id}`)
       } else {

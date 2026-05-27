@@ -23,7 +23,6 @@ export interface Participant {
   id: string
   pool_id: string
   name: string
-  password: string
   created_at: string
   total_points?: number
 }

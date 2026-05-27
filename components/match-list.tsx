@@ -63,20 +63,12 @@ export function MatchList({ matches, predictions, currentParticipantId, onPredic
     setError(null)
     
     try {
-      // Get password from localStorage for authentication
-      const participantPassword = localStorage.getItem("participant_password")
-      
-      if (!participantPassword) {
-        setError("Sessao expirada. Por favor, faca login novamente.")
-        return
-      }
-      
+      // The API will get the password from the HTTP-only session cookie
       const response = await fetch("/api/predictions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           participant_id: currentParticipantId,
-          participant_password: participantPassword,
           match_id: matchId,
           home_score: parseInt(homeScore),
           away_score: parseInt(awayScore),

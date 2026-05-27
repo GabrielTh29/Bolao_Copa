@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import { verifyPassword, isBcryptHash, hashPassword } from "@/lib/auth"
 import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit"
+import { getSession } from "@/lib/session"
+import { cookies } from "next/headers"
 
 // GET - Get predictions for a participant
 export async function GET(request: Request) {
@@ -70,9 +72,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Todos os campos sao obrigatorios" }, { status: 400 })
   }
 
+  // Try to get password from session cookie first, then from request body
+  let passwordToVerify = participant_password
+  
+  if (!passwordToVerify) {
+    const cookieStore = await cookies()
+    const session = await getSession(cookieStore)
+    if (session && session.participantId === participant_id) {
+      passwordToVerify = session.password
+    }
+  }
+
   // Require password for authentication
-  if (!participant_password) {
-    return NextResponse.json({ error: "Senha e obrigatoria para fazer palpites" }, { status: 401 })
+  if (!passwordToVerify) {
+    return NextResponse.json({ error: "Sessao expirada. Por favor, faca login novamente." }, { status: 401 })
   }
 
   // Validate scores are non-negative integers
@@ -98,12 +111,12 @@ export async function POST(request: Request) {
   // Verify password
   let isValid = false
   if (isBcryptHash(participant.password_hash)) {
-    isValid = await verifyPassword(participant_password, participant.password_hash)
+    isValid = await verifyPassword(passwordToVerify, participant.password_hash)
   } else {
     // Legacy plaintext password - verify and migrate
-    isValid = participant.password_hash === participant_password
+    isValid = participant.password_hash === passwordToVerify
     if (isValid) {
-      const newHash = await hashPassword(participant_password)
+      const newHash = await hashPassword(passwordToVerify)
       await supabase
         .from("participants")
         .update({ password_hash: newHash })

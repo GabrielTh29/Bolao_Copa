@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import { hashPassword, verifyPassword, isBcryptHash } from "@/lib/auth"
 import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit"
+import { getSession } from "@/lib/session"
+import { cookies } from "next/headers"
 
 // Generate a random invite code
 function generateInviteCode(): string {
@@ -157,8 +159,20 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "pool_id e obrigatorio" }, { status: 400 })
   }
 
-  // Require admin authentication
-  if (!admin_name || !admin_password) {
+  // Require admin authentication - try session cookie first, then body
+  let passwordToVerify = admin_password
+  let adminNameToVerify = admin_name
+  
+  if (!passwordToVerify || !adminNameToVerify) {
+    const cookieStore = await cookies()
+    const session = await getSession(cookieStore)
+    if (session) {
+      passwordToVerify = passwordToVerify || session.password
+      adminNameToVerify = adminNameToVerify || session.participantName
+    }
+  }
+
+  if (!adminNameToVerify || !passwordToVerify) {
     return NextResponse.json({ error: "Credenciais de administrador sao obrigatorias" }, { status: 401 })
   }
 
@@ -174,7 +188,7 @@ export async function PATCH(request: Request) {
   }
 
   // Verify admin is the pool admin
-  if (pool.admin_name !== admin_name) {
+  if (pool.admin_name !== adminNameToVerify) {
     return NextResponse.json({ error: "Apenas o administrador pode alterar configuracoes" }, { status: 403 })
   }
 
@@ -183,7 +197,7 @@ export async function PATCH(request: Request) {
     .from("participants")
     .select("id, password_hash")
     .eq("pool_id", pool_id)
-    .eq("name", admin_name)
+    .eq("name", adminNameToVerify)
     .single()
 
   if (!adminParticipant || !adminParticipant.password_hash) {
@@ -193,12 +207,12 @@ export async function PATCH(request: Request) {
   // Verify password
   let isValid = false
   if (isBcryptHash(adminParticipant.password_hash)) {
-    isValid = await verifyPassword(admin_password, adminParticipant.password_hash)
+    isValid = await verifyPassword(passwordToVerify, adminParticipant.password_hash)
   } else {
     // Legacy plaintext password - verify and migrate
-    isValid = adminParticipant.password_hash === admin_password
+    isValid = adminParticipant.password_hash === passwordToVerify
     if (isValid) {
-      const newHash = await hashPassword(admin_password)
+      const newHash = await hashPassword(passwordToVerify)
       await supabase
         .from("participants")
         .update({ password_hash: newHash })

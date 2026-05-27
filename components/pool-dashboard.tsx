@@ -44,38 +44,44 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
   const isAdmin = currentParticipantName === pool.admin_name
 
   useEffect(() => {
-    const participantId = localStorage.getItem("participant_id")
-    const participantName = localStorage.getItem("participant_name")
-    const storedPoolId = localStorage.getItem("pool_id")
-    
-    // Verifica se o participante salvo pertence a este bolao
-    if (participantId && storedPoolId === pool.id) {
-      const existsInPool = initialParticipants.some(p => p.id === participantId)
-      if (existsInPool) {
-        setCurrentParticipantId(participantId)
-        setCurrentParticipantName(participantName)
-        loadPredictions(participantId)
-      } else {
-        // O participante pode ter acabado de entrar e nao estar na lista inicial
-        // Verificar se o ID do participante e um UUID valido antes de usar
-        // Se sim, assumir que e um usuario novo e aceitar
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-        if (participantId && participantName && uuidRegex.test(participantId)) {
-          // Usuario novo que acabou de entrar - aceitar e recarregar participantes
-          setCurrentParticipantId(participantId)
-          setCurrentParticipantName(participantName)
-          loadPredictions(participantId)
-          // Atualizar a lista de participantes para incluir o novo
-          refreshParticipants()
+    // Fetch session from HTTP-only cookie
+    async function fetchSession() {
+      try {
+        const response = await fetch("/api/session")
+        if (response.ok) {
+          const session = await response.json()
+          
+          // Verifica se a sessao pertence a este bolao
+          if (session.participantId && session.poolId === pool.id) {
+            const existsInPool = initialParticipants.some(p => p.id === session.participantId)
+            if (existsInPool) {
+              setCurrentParticipantId(session.participantId)
+              setCurrentParticipantName(session.participantName)
+              loadPredictions(session.participantId)
+            } else {
+              // O participante pode ter acabado de entrar e nao estar na lista inicial
+              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+              if (session.participantId && session.participantName && uuidRegex.test(session.participantId)) {
+                setCurrentParticipantId(session.participantId)
+                setCurrentParticipantName(session.participantName)
+                loadPredictions(session.participantId)
+                refreshParticipants()
+              } else {
+                setShowSelectParticipant(true)
+              }
+            }
+          } else {
+            setShowSelectParticipant(true)
+          }
         } else {
-          // Participante nao existe mais neste bolao
           setShowSelectParticipant(true)
         }
+      } catch {
+        setShowSelectParticipant(true)
       }
-    } else {
-      // Nao tem sessao ou e de outro bolao - mostrar selecao
-      setShowSelectParticipant(true)
     }
+    
+    fetchSession()
   }, [pool.id, initialParticipants])
 
   const refreshParticipants = async () => {
@@ -114,22 +120,18 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("participant_id")
-    localStorage.removeItem("participant_name")
-    localStorage.removeItem("participant_password")
-    localStorage.removeItem("pool_id")
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/session", { method: "DELETE" })
+    } catch {
+      // Continue with redirect even if API fails
+    }
     router.push("/")
   }
 
   const selectParticipant = (participant: Participant) => {
-    localStorage.setItem("participant_id", participant.id)
-    localStorage.setItem("participant_name", participant.name)
-    localStorage.setItem("pool_id", pool.id)
-    setCurrentParticipantId(participant.id)
-    setCurrentParticipantName(participant.name)
-    setShowSelectParticipant(false)
-    loadPredictions(participant.id)
+    // Redirect to join page to authenticate
+    window.location.href = `/join/${pool.invite_code}`
   }
 
   const handlePredictionUpdate = () => {
@@ -141,21 +143,13 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
   const savePointsConfig = async () => {
     setSavingPoints(true)
     try {
-      // Get admin password for authentication
-      const adminPassword = localStorage.getItem("participant_password")
-      
-      if (!adminPassword) {
-        console.error("Senha nao encontrada. Faca login novamente.")
-        return
-      }
-      
+      // The API will get credentials from the HTTP-only session cookie
       const response = await fetch("/api/pools", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pool_id: pool.id,
           admin_name: currentParticipantName,
-          admin_password: adminPassword,
           points_exact: pointsExact,
           points_result_one_score: pointsResultOneScore,
           points_result_goal_diff: pointsResultGoalDiff,

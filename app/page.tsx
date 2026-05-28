@@ -62,7 +62,7 @@ export default function HomePage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "Erro ao criar bolao")
+        throw new Error(data.error || "Erro ao criar bolão")
       }
 
       // Get the admin participant that was created with the pool

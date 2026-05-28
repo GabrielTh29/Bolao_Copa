@@ -82,7 +82,8 @@ export default function JoinPoolPage() {
           return
         }
         
-        router.push(`/pool/${pool.id}`)
+        // Use window.location for full page reload to ensure cookies are sent
+        window.location.href = `/pool/${pool.id}`
       } else {
         const data = await response.json()
         setError(data.error || "Erro ao entrar no bolao")

@@ -97,7 +97,8 @@ export default function HomePage() {
         throw new Error("Erro ao criar sessão")
       }
 
-      router.push(`/pool/${data.id}`)
+      // Use window.location for full page reload to ensure cookies are sent
+      window.location.href = `/pool/${data.id}`
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar bolão")
     } finally {
@@ -185,7 +186,8 @@ export default function HomePage() {
         throw new Error("Erro ao criar sessão")
       }
 
-      router.push(`/pool/${pool.id}`)
+      // Use window.location for full page reload to ensure cookies are sent
+      window.location.href = `/pool/${pool.id}`
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao entrar no bolão")
     } finally {

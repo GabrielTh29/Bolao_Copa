@@ -36,10 +36,10 @@ export default function JoinPoolPage() {
           const data = await response.json()
           setPool(data)
         } else {
-          setError("Bolao nao encontrado")
+          setError("Bolão não encontrado")
         }
       } catch {
-        setError("Erro ao buscar bolao")
+        setError("Erro ao buscar bolão")
       } finally {
         setLoading(false)
       }
@@ -65,30 +65,18 @@ export default function JoinPoolPage() {
       if (response.ok) {
         const participant = await response.json()
         
-        // Create session with HTTP-only cookie
-        const sessionResponse = await fetch("/api/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            participantId: participant.id,
-            participantName: participant.name,
-            poolId: pool.id,
-            password: password,
-          }),
+        // Redireciona para o pool com os dados do participante na URL
+        const params = new URLSearchParams({
+          pid: participant.id,
+          pname: participant.name,
         })
-        
-        if (!sessionResponse.ok) {
-          setError("Erro ao criar sessao")
-          return
-        }
-        
-        router.push(`/pool/${pool.id}`)
+        window.location.href = `/pool/${pool.id}?${params.toString()}`
       } else {
         const data = await response.json()
-        setError(data.error || "Erro ao entrar no bolao")
+        setError(data.error || "Erro ao entrar no bolão")
       }
     } catch {
-      setError("Erro ao entrar no bolao")
+      setError("Erro ao entrar no bolão")
     } finally {
       setJoining(false)
     }
@@ -107,14 +95,14 @@ export default function JoinPoolPage() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-destructive">Bolao nao encontrado</CardTitle>
-            <CardDescription>O codigo de convite e invalido ou o bolao nao existe mais.</CardDescription>
+            <CardTitle className="text-destructive">Bolão não encontrado</CardTitle>
+            <CardDescription>O código de convite e inválido ou o bolão não existe mais.</CardDescription>
           </CardHeader>
           <CardContent>
             <Link href="/">
               <Button variant="outline" className="w-full">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar para a pagina inicial
+                Voltar para a página inicial
               </Button>
             </Link>
           </CardContent>
@@ -132,7 +120,7 @@ export default function JoinPoolPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
               <Trophy className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold">Copa Bolao</span>
+            <span className="text-xl font-bold">Copa Bolão</span>
           </Link>
         </div>
       </header>
@@ -145,9 +133,9 @@ export default function JoinPoolPage() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                 <Users className="h-8 w-8 text-primary" />
               </div>
-              <CardTitle className="text-2xl">Entrar no Bolao</CardTitle>
+              <CardTitle className="text-2xl">Entrar no Bolão</CardTitle>
               <CardDescription>
-                Voce foi convidado para participar do bolao <strong>{pool.name}</strong> criado por{" "}
+                Você foi convidada(o) para participar do bolão <strong>{pool.name}</strong> criado por{" "}
                 <strong>{pool.admin_name}</strong>
               </CardDescription>
             </CardHeader>
@@ -179,7 +167,7 @@ export default function JoinPoolPage() {
                     required
                   />
                   <span className="text-xs text-muted-foreground">
-                    Novo usuario? Crie uma senha. Ja tem conta? Digite sua senha.
+                    Novo(a)? Crie uma senha. Já cadastrou? Digite sua senha.
                   </span>
                 </div>
 
@@ -192,7 +180,7 @@ export default function JoinPoolPage() {
                       Entrando...
                     </>
                   ) : (
-                    "Entrar no Bolao"
+                    "Entrar no Bolão"
                   )}
                 </Button>
               </form>
@@ -201,7 +189,7 @@ export default function JoinPoolPage() {
                 <Link href="/">
                   <Button variant="ghost" className="w-full">
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Voltar para a pagina inicial
+                    Voltar para a página inicial
                   </Button>
                 </Link>
               </div>

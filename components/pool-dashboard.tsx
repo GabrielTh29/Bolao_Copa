@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import type { Pool, Participant, Match, Prediction } from "@/lib/types"
+import type { SessionData } from "@/lib/session"
 import { Leaderboard } from "@/components/leaderboard"
 import { MatchList } from "@/components/match-list"
 import { PredictionHistory } from "@/components/prediction-history"
@@ -19,9 +20,10 @@ interface PoolDashboardProps {
   pool: Pool
   initialParticipants: Participant[]
   initialMatches: Match[]
+  session: SessionData
 }
 
-export function PoolDashboard({ pool, initialParticipants, initialMatches }: PoolDashboardProps) {
+export function PoolDashboard({ pool, initialParticipants, initialMatches, session }: PoolDashboardProps) {
   const router = useRouter()
   const supabase = createClient()
   
@@ -29,9 +31,8 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
   const [matches, setMatches] = useState(initialMatches)
   const [predictions, setPredictions] = useState<Prediction[]>([])
   const [copied, setCopied] = useState(false)
-  const [currentParticipantId, setCurrentParticipantId] = useState<string | null>(null)
-  const [currentParticipantName, setCurrentParticipantName] = useState<string | null>(null)
-  const [showSelectParticipant, setShowSelectParticipant] = useState(false)
+  const [currentParticipantId] = useState<string>(session.participantId)
+  const [currentParticipantName] = useState<string>(session.participantName)
   
   // Points configuration editing
   const [editingPoints, setEditingPoints] = useState(false)
@@ -44,45 +45,9 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
   const isAdmin = currentParticipantName === pool.admin_name
 
   useEffect(() => {
-    // Fetch session from HTTP-only cookie
-    async function fetchSession() {
-      try {
-        const response = await fetch("/api/session")
-        if (response.ok) {
-          const session = await response.json()
-          
-          // Verifica se a sessao pertence a este bolao
-          if (session.participantId && session.poolId === pool.id) {
-            const existsInPool = initialParticipants.some(p => p.id === session.participantId)
-            if (existsInPool) {
-              setCurrentParticipantId(session.participantId)
-              setCurrentParticipantName(session.participantName)
-              loadPredictions(session.participantId)
-            } else {
-              // O participante pode ter acabado de entrar e nao estar na lista inicial
-              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-              if (session.participantId && session.participantName && uuidRegex.test(session.participantId)) {
-                setCurrentParticipantId(session.participantId)
-                setCurrentParticipantName(session.participantName)
-                loadPredictions(session.participantId)
-                refreshParticipants()
-              } else {
-                setShowSelectParticipant(true)
-              }
-            }
-          } else {
-            setShowSelectParticipant(true)
-          }
-        } else {
-          setShowSelectParticipant(true)
-        }
-      } catch {
-        setShowSelectParticipant(true)
-      }
-    }
-    
-    fetchSession()
-  }, [pool.id, initialParticipants])
+    // Carrega predictions para o participante da sessao
+    loadPredictions(session.participantId)
+  }, [session.participantId])
 
   const refreshParticipants = async () => {
     const { data } = await supabase
@@ -127,11 +92,6 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
       // Continue with redirect even if API fails
     }
     router.push("/")
-  }
-
-  const selectParticipant = (participant: Participant) => {
-    // Redirect to join page to authenticate
-    window.location.href = `/join/${pool.invite_code}`
   }
 
   const handlePredictionUpdate = () => {
@@ -184,54 +144,6 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
       total_points: totalPoints,
     }
   }).sort((a, b) => b.total_points - a.total_points)
-
-  // Tela de selecao de participante
-  if (showSelectParticipant) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <Users className="h-8 w-8 text-primary" />
-            </div>
-            <CardTitle className="text-2xl">{pool.name}</CardTitle>
-            <p className="text-sm text-muted-foreground mt-2">
-              Selecione seu nome para continuar:
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {participants.map((participant) => (
-              <Button
-                key={participant.id}
-                variant="outline"
-                className="w-full justify-start gap-2 h-auto py-3"
-                onClick={() => selectParticipant(participant)}
-              >
-                <Users className="h-4 w-4" />
-                <span>{participant.name}</span>
-                {participant.name === pool.admin_name && (
-                  <Badge variant="secondary" className="ml-auto text-xs">Admin</Badge>
-                )}
-              </Button>
-            ))}
-            
-            <div className="pt-4 border-t mt-4">
-              <p className="text-sm text-muted-foreground text-center mb-3">
-                Nao esta na lista?
-              </p>
-              <Button 
-                variant="secondary" 
-                className="w-full"
-                onClick={() => window.location.href = `/join/${pool.invite_code}`}
-              >
-                Entrar como novo participante
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-background">

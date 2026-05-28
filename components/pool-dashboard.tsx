@@ -47,42 +47,36 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
     // Fetch session from HTTP-only cookie
     async function fetchSession() {
       try {
-        const response = await fetch("/api/session")
+        const response = await fetch("/api/session", {
+          credentials: "include", // Important: include cookies in the request
+        })
         if (response.ok) {
           const session = await response.json()
           
           // Verifica se a sessao pertence a este bolao
           if (session.participantId && session.poolId === pool.id) {
+            // Sessao valida para este bolao - confia nos dados da sessao
+            setCurrentParticipantId(session.participantId)
+            setCurrentParticipantName(session.participantName)
+            loadPredictions(session.participantId)
+            
+            // Se o participante nao esta na lista, atualiza a lista
             const existsInPool = initialParticipants.some(p => p.id === session.participantId)
-            if (existsInPool) {
-              setCurrentParticipantId(session.participantId)
-              setCurrentParticipantName(session.participantName)
-              loadPredictions(session.participantId)
-              setIsLoading(false)
-            } else {
-              // O participante pode ter acabado de entrar e nao estar na lista inicial
-              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-              if (session.participantId && session.participantName && uuidRegex.test(session.participantId)) {
-                setCurrentParticipantId(session.participantId)
-                setCurrentParticipantName(session.participantName)
-                loadPredictions(session.participantId)
-                refreshParticipants()
-                setIsLoading(false)
-              } else {
-                // Redireciona para a pagina de join
-                window.location.href = `/join/${pool.invite_code}`
-              }
+            if (!existsInPool) {
+              refreshParticipants()
             }
+            
+            setIsLoading(false)
           } else {
-            // Redireciona para a pagina de join
+            // Sessao invalida ou de outro bolao - redireciona para join
             window.location.href = `/join/${pool.invite_code}`
           }
         } else {
-          // Redireciona para a pagina de join
+          // Sem sessao - redireciona para join
           window.location.href = `/join/${pool.invite_code}`
         }
       } catch {
-        // Redireciona para a pagina de join
+        // Erro - redireciona para join
         window.location.href = `/join/${pool.invite_code}`
       }
     }

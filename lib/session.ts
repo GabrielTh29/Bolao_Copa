@@ -19,12 +19,12 @@ export interface SessionData {
 /**
  * Set session cookies (server-side)
  */
-export async function setSessionCookies(
+export function setSessionCookies(
   response: NextResponse,
   session: SessionData
-): Promise<NextResponse> {
+): NextResponse {
   response.cookies.set("participant_id", session.participantId, COOKIE_OPTIONS)
-  response.cookies.set("participant_name", session.participantName, COOKIE_OPTIONS)
+  response.cookies.set("participant_name", encodeURIComponent(session.participantName), COOKIE_OPTIONS)
   response.cookies.set("pool_id", session.poolId, COOKIE_OPTIONS)
   
   return response
@@ -54,7 +54,7 @@ export async function getSession(): Promise<SessionData | null> {
 /**
  * Clear session cookies (server-side)
  */
-export async function clearSessionCookies(response: NextResponse): Promise<NextResponse> {
+export function clearSessionCookies(response: NextResponse): NextResponse {
   response.cookies.delete("participant_id")
   response.cookies.delete("participant_name")
   response.cookies.delete("pool_id")

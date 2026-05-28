@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { PoolDashboard } from "@/components/pool-dashboard"
+import { getSession } from "@/lib/session"
 
 interface PoolPageProps {
   params: Promise<{ id: string }>
@@ -10,6 +11,10 @@ export default async function PoolPage({ params }: PoolPageProps) {
   const { id } = await params
   const supabase = await createClient()
 
+  // Busca sessao do servidor
+  const session = await getSession()
+  
+  // Se nao tiver sessao ou a sessao for de outro pool, busca o pool para redirecionar
   const { data: pool, error: poolError } = await supabase
     .from("pools")
     .select("*")
@@ -18,6 +23,11 @@ export default async function PoolPage({ params }: PoolPageProps) {
 
   if (poolError || !pool) {
     notFound()
+  }
+
+  // Verifica se a sessao e valida para este pool
+  if (!session || session.poolId !== id) {
+    redirect(`/join/${pool.invite_code}`)
   }
 
   const { data: participants } = await supabase
@@ -40,6 +50,7 @@ export default async function PoolPage({ params }: PoolPageProps) {
       pool={pool} 
       initialParticipants={participants || []} 
       initialMatches={matches || []}
+      session={session}
     />
   )
 }

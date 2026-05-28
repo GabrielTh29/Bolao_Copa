@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import type { Pool, Participant, Match, Prediction } from "@/lib/types"
+import type { SessionData } from "@/lib/session"
 import { Leaderboard } from "@/components/leaderboard"
 import { MatchList } from "@/components/match-list"
 import { PredictionHistory } from "@/components/prediction-history"
@@ -19,9 +20,10 @@ interface PoolDashboardProps {
   pool: Pool
   initialParticipants: Participant[]
   initialMatches: Match[]
+  session: SessionData
 }
 
-export function PoolDashboard({ pool, initialParticipants, initialMatches }: PoolDashboardProps) {
+export function PoolDashboard({ pool, initialParticipants, initialMatches, session }: PoolDashboardProps) {
   const router = useRouter()
   const supabase = createClient()
   
@@ -29,9 +31,8 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
   const [matches, setMatches] = useState(initialMatches)
   const [predictions, setPredictions] = useState<Prediction[]>([])
   const [copied, setCopied] = useState(false)
-  const [currentParticipantId, setCurrentParticipantId] = useState<string | null>(null)
-  const [currentParticipantName, setCurrentParticipantName] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [currentParticipantId] = useState<string>(session.participantId)
+  const [currentParticipantName] = useState<string>(session.participantName)
   
   // Points configuration editing
   const [editingPoints, setEditingPoints] = useState(false)
@@ -44,45 +45,9 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
   const isAdmin = currentParticipantName === pool.admin_name
 
   useEffect(() => {
-    // Fetch session from HTTP-only cookie
-    async function fetchSession() {
-      try {
-        const response = await fetch("/api/session", {
-          credentials: "include", // Important: include cookies in the request
-        })
-        if (response.ok) {
-          const session = await response.json()
-          
-          // Verifica se a sessao pertence a este bolao
-          if (session.participantId && session.poolId === pool.id) {
-            // Sessao valida para este bolao - confia nos dados da sessao
-            setCurrentParticipantId(session.participantId)
-            setCurrentParticipantName(session.participantName)
-            loadPredictions(session.participantId)
-            
-            // Se o participante nao esta na lista, atualiza a lista
-            const existsInPool = initialParticipants.some(p => p.id === session.participantId)
-            if (!existsInPool) {
-              refreshParticipants()
-            }
-            
-            setIsLoading(false)
-          } else {
-            // Sessao invalida ou de outro bolao - redireciona para join
-            window.location.href = `/join/${pool.invite_code}`
-          }
-        } else {
-          // Sem sessao - redireciona para join
-          window.location.href = `/join/${pool.invite_code}`
-        }
-      } catch {
-        // Erro - redireciona para join
-        window.location.href = `/join/${pool.invite_code}`
-      }
-    }
-    
-    fetchSession()
-  }, [pool.id, pool.invite_code, initialParticipants])
+    // Carrega predictions para o participante da sessao
+    loadPredictions(session.participantId)
+  }, [session.participantId])
 
   const refreshParticipants = async () => {
     const { data } = await supabase
@@ -179,18 +144,6 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
       total_points: totalPoints,
     }
   }).sort((a, b) => b.total_points - a.total_points)
-
-  // Tela de loading enquanto verifica sessao
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center">
-          <Trophy className="h-12 w-12 text-primary mx-auto mb-4 animate-pulse" />
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-background">

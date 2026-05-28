@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound, redirect } from "next/navigation"
 import { PoolDashboard } from "@/components/pool-dashboard"
-import { getSession, setSession } from "@/lib/session"
+import { getSession } from "@/lib/session"
 import type { SessionData } from "@/lib/session"
 
 interface PoolPageProps {
@@ -25,18 +25,16 @@ export default async function PoolPage({ params, searchParams }: PoolPageProps) 
     notFound()
   }
 
-  // Verifica se tem dados do participante na URL (vindo de criar/entrar)
+  // Prioriza dados da URL (vindo da criacao/entrada do bolao)
   let session: SessionData | null = null
   
   if (pid && pname) {
-    // Participante vindo da página de criar/entrar - cria sessão
+    // Participante vindo da página de criar/entrar - usa dados da URL diretamente
     session = {
       participantId: pid,
       participantName: decodeURIComponent(pname),
       poolId: id,
     }
-    // Salva a sessão nos cookies para uso futuro
-    await setSession(session)
   } else {
     // Tenta buscar sessão existente dos cookies
     session = await getSession()

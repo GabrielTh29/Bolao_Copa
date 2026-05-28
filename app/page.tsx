@@ -404,7 +404,7 @@ export default function HomePage() {
                         required
                       />
                       <span className="text-xs text-muted-foreground">
-                        Novo usuário? Crie uma senha. Já tem conta? Digite sua senha.
+                        Novo(a)? Crie uma senha. Já cadastrou? Digite sua senha.
                       </span>
                     </div>
 

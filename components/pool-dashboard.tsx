@@ -228,7 +228,7 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches, sessi
             <TabsTrigger value="history">Meus Palpites</TabsTrigger>
             <TabsTrigger value="admin">
               <Settings className="h-4 w-4 mr-1" />
-              Admin
+              Infos
             </TabsTrigger>
           </TabsList>
           

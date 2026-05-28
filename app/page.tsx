@@ -94,12 +94,12 @@ export default function HomePage() {
       })
 
       if (!sessionResponse.ok) {
-        throw new Error("Erro ao criar sessao")
+        throw new Error("Erro ao criar sessão")
       }
 
       router.push(`/pool/${data.id}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao criar bolao")
+      setError(err instanceof Error ? err.message : "Erro ao criar bolão")
     } finally {
       setIsLoading(false)
     }
@@ -116,12 +116,12 @@ export default function HomePage() {
       const data = await response.json()
 
       if (!response.ok || !data) {
-        throw new Error("Codigo de convite invalido")
+        throw new Error("Codigo de convite inválido")
       }
 
       setPoolInfo(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao buscar bolao")
+      setError(err instanceof Error ? err.message : "Erro ao buscar bolão")
       setPoolInfo(null)
     } finally {
       setIsLoading(false)
@@ -147,7 +147,7 @@ export default function HomePage() {
         const data = await response.json()
 
         if (!response.ok || !data) {
-          throw new Error("Codigo de convite invalido")
+          throw new Error("Codigo de convite inválido")
         }
         pool = data
         setPoolInfo(data)
@@ -182,12 +182,12 @@ export default function HomePage() {
       })
 
       if (!sessionResponse.ok) {
-        throw new Error("Erro ao criar sessao")
+        throw new Error("Erro ao criar sessão")
       }
 
       router.push(`/pool/${pool.id}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao entrar no bolao")
+      setError(err instanceof Error ? err.message : "Erro ao entrar no bolão")
     } finally {
       setIsLoading(false)
     }
@@ -202,10 +202,10 @@ export default function HomePage() {
           <div className="flex flex-col items-center text-center gap-6">
             <div className="flex items-center gap-3">
               <Trophy className="h-12 w-12 text-secondary" />
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Bolao da Copa 2026 :)</h1>
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">Bolão da Copa 2026 :)</h1>
             </div>
             <p className="text-lg md:text-xl max-w-2xl text-primary-foreground/90">
-              Diversao e Alegria nas pernas! Mostra tua forca, Brasil!!!
+              Diversão e Alegria nas pernas! Mostra tua força, Brasil!!!
             </p>
           </div>
         </div>
@@ -217,7 +217,7 @@ export default function HomePage() {
           <Card>
             <CardHeader className="text-center">
               <CardTitle>Comece Agora</CardTitle>
-              <CardDescription>Crie um novo bolao ou entre em um existente</CardDescription>
+              <CardDescription>Crie um novo bolão ou entre em um existente</CardDescription>
             </CardHeader>
             <CardContent>
               {error && (
@@ -228,14 +228,14 @@ export default function HomePage() {
 
               <Tabs defaultValue="create" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="create">Criar Bolao</TabsTrigger>
+                  <TabsTrigger value="create">Criar Bolão</TabsTrigger>
                   <TabsTrigger value="join">Entrar</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="create" className="mt-6">
                   <form onSubmit={handleCreatePool} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="poolName">Nome do Bolao</Label>
+                      <Label htmlFor="poolName">Nome do Bolão</Label>
                       <Input
                         id="poolName"
                         placeholder="Ex: Bolao da Familia"
@@ -269,7 +269,7 @@ export default function HomePage() {
                         required
                       />
                       <span className="text-xs text-muted-foreground">
-                        Voce precisara desta senha para acessar sua conta
+                        Voce precisará desta senha para acessar sua conta
                       </span>
                     </div>
 
@@ -280,7 +280,7 @@ export default function HomePage() {
                       className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <Settings2 className="h-4 w-4" />
-                      Configurar pontuacao
+                      Configurar pontuação
                       {showPointsConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </button>
 
@@ -327,7 +327,7 @@ export default function HomePage() {
                             />
                           </div>
                           <div className="flex flex-col gap-1">
-                            <Label htmlFor="pointsResultOnly" className="text-xs">So resultado</Label>
+                            <Label htmlFor="pointsResultOnly" className="text-xs">Só resultado</Label>
                             <Input
                               id="pointsResultOnly"
                               type="number"
@@ -349,11 +349,11 @@ export default function HomePage() {
                               onChange={(e) => setPointsExactOpposite(Number(e.target.value))}
                               className="text-center border-destructive/50"
                             />
-                            <span className="text-xs text-muted-foreground">Ex: palpite 2x1, resultado 1x2 (nao vale empate)</span>
+                            <span className="text-xs text-muted-foreground">Ex: palpite 2x1, resultado 1x2 (não vale empate)</span>
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Padrao: 10 (exato), 5 (resultado+1), 4 (dif. gols), 3 (resultado), -5 (invertido)
+                          Padrão: 10 (exato), 5 (resultado+1), 4 (dif. gols), 3 (resultado), -5 (invertido)
                         </p>
                       </div>
                     )}
@@ -368,7 +368,7 @@ export default function HomePage() {
                 <TabsContent value="join" className="mt-6">
                   <form onSubmit={handleJoinPool} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="inviteCode">Codigo de Convite</Label>
+                      <Label htmlFor="inviteCode">Código de Convite</Label>
                       <div className="flex gap-2">
                         <Input
                           id="inviteCode"
@@ -381,9 +381,9 @@ export default function HomePage() {
                           maxLength={6}
                           required
                         />
-                        <Button 
-                          type="button" 
-                          variant="outline" 
+                        <Button
+                          type="button"
+                          variant="outline"
                           onClick={handleCheckPool}
                           disabled={isLoading || inviteCode.length < 6}
                         >
@@ -394,7 +394,7 @@ export default function HomePage() {
 
                     {poolInfo && (
                       <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                        <p className="text-sm font-medium">Bolao: {poolInfo.name}</p>
+                        <p className="text-sm font-medium">Bolão: {poolInfo.name}</p>
                         <p className="text-xs text-muted-foreground">Criado por: {poolInfo.admin_name}</p>
                       </div>
                     )}
@@ -425,7 +425,7 @@ export default function HomePage() {
                         required
                       />
                       <span className="text-xs text-muted-foreground">
-                        Novo usuario? Crie uma senha. Ja tem conta? Digite sua senha.
+                        Novo usuário? Crie uma senha. Já tem conta? Digite sua senha.
                       </span>
                     </div>
 
@@ -444,7 +444,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="py-6 border-t">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          Bolao da Copa 2026
+          Bolão da Copa 2026
         </div>
       </footer>
     </div>

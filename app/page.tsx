@@ -81,24 +81,13 @@ export default function HomePage() {
         throw new Error(participant.error || "Erro ao registrar participante")
       }
 
-      // Create session with HTTP-only cookie
-      const sessionResponse = await fetch("/api/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          participantId: participant.id,
-          participantName: participant.name,
-          poolId: data.id,
-          password: adminPassword,
-        }),
+      // Redireciona para o pool com os dados do participante na URL
+      // Isso evita problemas com cookies e garante que o usuário entre diretamente
+      const params = new URLSearchParams({
+        pid: participant.id,
+        pname: participant.name,
       })
-
-      if (!sessionResponse.ok) {
-        throw new Error("Erro ao criar sessão")
-      }
-
-      // Use window.location for full page reload to ensure cookies are sent
-      window.location.href = `/pool/${data.id}`
+      window.location.href = `/pool/${data.id}?${params.toString()}`
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar bolão")
     } finally {
@@ -170,24 +159,12 @@ export default function HomePage() {
         throw new Error(participant.error || "Erro ao entrar no bolao")
       }
 
-      // Create session with HTTP-only cookie
-      const sessionResponse = await fetch("/api/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          participantId: participant.id,
-          participantName: participant.name,
-          poolId: pool.id,
-          password: participantPassword,
-        }),
+      // Redireciona para o pool com os dados do participante na URL
+      const params = new URLSearchParams({
+        pid: participant.id,
+        pname: participant.name,
       })
-
-      if (!sessionResponse.ok) {
-        throw new Error("Erro ao criar sessão")
-      }
-
-      // Use window.location for full page reload to ensure cookies are sent
-      window.location.href = `/pool/${pool.id}`
+      window.location.href = `/pool/${pool.id}?${params.toString()}`
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao entrar no bolão")
     } finally {

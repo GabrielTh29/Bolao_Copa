@@ -46,9 +46,20 @@ export async function getSession(): Promise<SessionData | null> {
   
   return {
     participantId,
-    participantName,
+    participantName: decodeURIComponent(participantName),
     poolId,
   }
+}
+
+/**
+ * Set session in cookies (server-side, for Server Components/Actions)
+ */
+export async function setSession(session: SessionData): Promise<void> {
+  const cookieStore = await cookies()
+  
+  cookieStore.set("participant_id", session.participantId, COOKIE_OPTIONS)
+  cookieStore.set("participant_name", encodeURIComponent(session.participantName), COOKIE_OPTIONS)
+  cookieStore.set("pool_id", session.poolId, COOKIE_OPTIONS)
 }
 
 /**

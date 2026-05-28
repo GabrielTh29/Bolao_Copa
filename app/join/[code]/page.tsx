@@ -65,25 +65,12 @@ export default function JoinPoolPage() {
       if (response.ok) {
         const participant = await response.json()
         
-        // Create session with HTTP-only cookie
-        const sessionResponse = await fetch("/api/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            participantId: participant.id,
-            participantName: participant.name,
-            poolId: pool.id,
-            password: password,
-          }),
+        // Redireciona para o pool com os dados do participante na URL
+        const params = new URLSearchParams({
+          pid: participant.id,
+          pname: participant.name,
         })
-        
-        if (!sessionResponse.ok) {
-          setError("Erro ao criar sessão")
-          return
-        }
-        
-        // Use window.location for full page reload to ensure cookies are sent
-        window.location.href = `/pool/${pool.id}`
+        window.location.href = `/pool/${pool.id}?${params.toString()}`
       } else {
         const data = await response.json()
         setError(data.error || "Erro ao entrar no bolão")

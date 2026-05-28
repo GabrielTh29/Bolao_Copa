@@ -1,20 +1,20 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound, redirect } from "next/navigation"
 import { PoolDashboard } from "@/components/pool-dashboard"
-import { getSession } from "@/lib/session"
+import { getSession, setSession } from "@/lib/session"
+import type { SessionData } from "@/lib/session"
 
 interface PoolPageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ pid?: string; pname?: string }>
 }
 
-export default async function PoolPage({ params }: PoolPageProps) {
+export default async function PoolPage({ params, searchParams }: PoolPageProps) {
   const { id } = await params
+  const { pid, pname } = await searchParams
   const supabase = await createClient()
 
-  // Busca sessao do servidor
-  const session = await getSession()
-  
-  // Se nao tiver sessao ou a sessao for de outro pool, busca o pool para redirecionar
+  // Busca o pool primeiro
   const { data: pool, error: poolError } = await supabase
     .from("pools")
     .select("*")
@@ -25,9 +25,26 @@ export default async function PoolPage({ params }: PoolPageProps) {
     notFound()
   }
 
-  // Verifica se a sessao e valida para este pool
-  if (!session || session.poolId !== id) {
-    redirect(`/join/${pool.invite_code}`)
+  // Verifica se tem dados do participante na URL (vindo de criar/entrar)
+  let session: SessionData | null = null
+  
+  if (pid && pname) {
+    // Participante vindo da página de criar/entrar - cria sessão
+    session = {
+      participantId: pid,
+      participantName: decodeURIComponent(pname),
+      poolId: id,
+    }
+    // Salva a sessão nos cookies para uso futuro
+    await setSession(session)
+  } else {
+    // Tenta buscar sessão existente dos cookies
+    session = await getSession()
+    
+    // Se não tem sessão ou é de outro pool, redireciona para join
+    if (!session || session.poolId !== id) {
+      redirect(`/join/${pool.invite_code}`)
+    }
   }
 
   const { data: participants } = await supabase

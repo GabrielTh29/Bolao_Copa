@@ -78,7 +78,7 @@ export function Leaderboard({ participants, currentParticipantId }: LeaderboardP
                 )}>
                   {participant.name}
                   {participant.id === currentParticipantId && (
-                    <span className="ml-2 text-xs text-muted-foreground">(voce)</span>
+                    <span className="ml-2 text-xs text-muted-foreground">(Você)</span>
                   )}
                 </p>
               </div>

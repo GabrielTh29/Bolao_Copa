@@ -228,7 +228,7 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches, sessi
             <TabsTrigger value="history">Meus Palpites</TabsTrigger>
             <TabsTrigger value="admin">
               <Settings className="h-4 w-4 mr-1" />
-              Admin
+              Infos
             </TabsTrigger>
           </TabsList>
           
@@ -259,14 +259,14 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches, sessi
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5" />
-                  Configuracoes do Bolao
+                  Configuracoes do Bolão
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <h3 className="font-medium mb-2">Compartilhar Bolao</h3>
+                  <h3 className="font-medium mb-2">Compartilhar Bolão</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Convide amigos compartilhando o link ou codigo abaixo:
+                    Convide amigos compartilhando o link ou código abaixo:
                   </p>
                   <div className="flex gap-2">
                     <code className="flex-1 bg-muted px-3 py-2 rounded-lg text-sm font-mono">
@@ -288,7 +288,7 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches, sessi
                 
                 <div className="border-t pt-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-medium">Sistema de Pontuacao</h3>
+                    <h3 className="font-medium">Sistema de Pontuação</h3>
                     {isAdmin && !editingPoints && (
                       <Button variant="outline" size="sm" onClick={() => setEditingPoints(true)}>
                         <Pencil className="h-4 w-4 mr-1" />
@@ -356,10 +356,10 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches, sessi
                             onChange={(e) => setPointsResultGoalDiff(Number(e.target.value))}
                             className="text-center"
                           />
-                          <span className="text-xs text-muted-foreground">Nao vale para empates</span>
+                          <span className="text-xs text-muted-foreground">Não vale para empates</span>
                         </div>
                         <div className="flex flex-col gap-2">
-                          <Label htmlFor="editPointsResultOnly" className="text-xs">So resultado</Label>
+                          <Label htmlFor="editPointsResultOnly" className="text-xs">Só resultado</Label>
                           <Input
                             id="editPointsResultOnly"
                             type="number"

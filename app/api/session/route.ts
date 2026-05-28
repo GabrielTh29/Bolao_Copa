@@ -1,6 +1,31 @@
 import { NextResponse } from "next/server"
-import { setSessionCookies, clearSessionCookies, type SessionData } from "@/lib/session"
+import { setSessionCookies, clearSessionCookies, getSessionFromRequest, type SessionData } from "@/lib/session"
 import { checkRateLimit, getClientIdentifier } from "@/lib/rate-limit"
+
+export async function GET(request: Request) {
+  try {
+    const session = getSessionFromRequest(request)
+    
+    if (!session) {
+      return NextResponse.json(
+        { participantId: null, participantName: null, poolId: null },
+        { status: 200 }
+      )
+    }
+    
+    return NextResponse.json({
+      participantId: session.participantId,
+      participantName: session.participantName,
+      poolId: session.poolId,
+    })
+  } catch (error) {
+    console.error("[Session] Error getting session:", error)
+    return NextResponse.json(
+      { participantId: null, participantName: null, poolId: null },
+      { status: 200 }
+    )
+  }
+}
 
 export async function POST(request: Request) {
   // Rate limit check

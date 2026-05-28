@@ -13,7 +13,7 @@ export default function HomePage() {
   const router = useRouter()
 
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<stringbibi | null>(null)
 
   // Create pool form
   const [poolName, setPoolName] = useState("")

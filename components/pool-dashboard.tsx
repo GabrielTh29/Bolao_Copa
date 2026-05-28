@@ -31,7 +31,7 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
   const [copied, setCopied] = useState(false)
   const [currentParticipantId, setCurrentParticipantId] = useState<string | null>(null)
   const [currentParticipantName, setCurrentParticipantName] = useState<string | null>(null)
-  const [showSelectParticipant, setShowSelectParticipant] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   
   // Points configuration editing
   const [editingPoints, setEditingPoints] = useState(false)
@@ -58,6 +58,7 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
               setCurrentParticipantId(session.participantId)
               setCurrentParticipantName(session.participantName)
               loadPredictions(session.participantId)
+              setIsLoading(false)
             } else {
               // O participante pode ter acabado de entrar e nao estar na lista inicial
               const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -66,23 +67,28 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
                 setCurrentParticipantName(session.participantName)
                 loadPredictions(session.participantId)
                 refreshParticipants()
+                setIsLoading(false)
               } else {
-                setShowSelectParticipant(true)
+                // Redireciona para a pagina de join
+                window.location.href = `/join/${pool.invite_code}`
               }
             }
           } else {
-            setShowSelectParticipant(true)
+            // Redireciona para a pagina de join
+            window.location.href = `/join/${pool.invite_code}`
           }
         } else {
-          setShowSelectParticipant(true)
+          // Redireciona para a pagina de join
+          window.location.href = `/join/${pool.invite_code}`
         }
       } catch {
-        setShowSelectParticipant(true)
+        // Redireciona para a pagina de join
+        window.location.href = `/join/${pool.invite_code}`
       }
     }
     
     fetchSession()
-  }, [pool.id, initialParticipants])
+  }, [pool.id, pool.invite_code, initialParticipants])
 
   const refreshParticipants = async () => {
     const { data } = await supabase
@@ -127,11 +133,6 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
       // Continue with redirect even if API fails
     }
     router.push("/")
-  }
-
-  const selectParticipant = (participant: Participant) => {
-    // Redirect to join page to authenticate
-    window.location.href = `/join/${pool.invite_code}`
   }
 
   const handlePredictionUpdate = () => {
@@ -185,50 +186,14 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches }: Poo
     }
   }).sort((a, b) => b.total_points - a.total_points)
 
-  // Tela de selecao de participante
-  if (showSelectParticipant) {
+  // Tela de loading enquanto verifica sessao
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <Users className="h-8 w-8 text-primary" />
-            </div>
-            <CardTitle className="text-2xl">{pool.name}</CardTitle>
-            <p className="text-sm text-muted-foreground mt-2">
-              Selecione seu nome para continuar:
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {participants.map((participant) => (
-              <Button
-                key={participant.id}
-                variant="outline"
-                className="w-full justify-start gap-2 h-auto py-3"
-                onClick={() => selectParticipant(participant)}
-              >
-                <Users className="h-4 w-4" />
-                <span>{participant.name}</span>
-                {participant.name === pool.admin_name && (
-                  <Badge variant="secondary" className="ml-auto text-xs">Admin</Badge>
-                )}
-              </Button>
-            ))}
-            
-            <div className="pt-4 border-t mt-4">
-              <p className="text-sm text-muted-foreground text-center mb-3">
-                Nao esta na lista?
-              </p>
-              <Button 
-                variant="secondary" 
-                className="w-full"
-                onClick={() => window.location.href = `/join/${pool.invite_code}`}
-              >
-                Entrar como novo participante
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="text-center">
+          <Trophy className="h-12 w-12 text-primary mx-auto mb-4 animate-pulse" />
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
       </div>
     )
   }

@@ -31,16 +31,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Bolao nao encontrado" }, { status: 404 })
   }
 
-  // Check if participant already exists - only select id and password_hash
+  // Check if participant already exists (case-insensitive) - only select id and password_hash
   const { data: existing } = await supabase
     .from("participants")
     .select("id, name, password_hash")
     .eq("pool_id", id)
-    .eq("name", name.trim())
+    .ilike("name", name.trim())
     .single()
 
   if (existing) {
-    // User exists - verify password
+    // Check if name matches exactly (same case) - if not, it's a duplicate with different case
+    if (existing.name.toLowerCase() === name.trim().toLowerCase() && existing.name !== name.trim()) {
+      return NextResponse.json({ error: "Este usuário já existe" }, { status: 409 })
+    }
+    
+    // User exists with exact same name - verify password
     const storedHash = existing.password_hash
     
     if (!storedHash) {

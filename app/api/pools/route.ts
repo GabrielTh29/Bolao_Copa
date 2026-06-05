@@ -124,6 +124,19 @@ export async function POST(request: Request) {
   // Hash the admin password before storing
   const hashedPassword = await hashPassword(admin_password)
 
+  // Check if admin name already exists in this pool (case-insensitive)
+  const { data: existingParticipant } = await supabase
+    .from("participants")
+    .select("id, name")
+    .eq("pool_id", data.id)
+    .ilike("name", admin_name.trim())
+    .single()
+
+  if (existingParticipant) {
+    // This should not happen for a new pool, but check anyway
+    return NextResponse.json({ error: "Este usuário já existe" }, { status: 409 })
+  }
+
   // Also add admin as first participant with hashed password
   await supabase.from("participants").insert({
     pool_id: data.id,
@@ -187,17 +200,17 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Bolao nao encontrado" }, { status: 404 })
   }
 
-  // Verify admin is the pool admin
-  if (pool.admin_name !== adminNameToVerify) {
+  // Verify admin is the pool admin (case-insensitive comparison)
+  if (pool.admin_name.toLowerCase() !== adminNameToVerify.toLowerCase()) {
     return NextResponse.json({ error: "Apenas o administrador pode alterar configuracoes" }, { status: 403 })
   }
 
-  // Get admin participant to verify password
+  // Get admin participant to verify password (case-insensitive)
   const { data: adminParticipant } = await supabase
     .from("participants")
     .select("id, password_hash")
     .eq("pool_id", pool_id)
-    .eq("name", adminNameToVerify)
+    .ilike("name", adminNameToVerify)
     .single()
 
   if (!adminParticipant || !adminParticipant.password_hash) {

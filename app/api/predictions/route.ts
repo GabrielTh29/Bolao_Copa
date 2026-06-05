@@ -96,9 +96,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Nao e possivel fazer palpites para jogos que ja comecaram" }, { status: 400 })
   }
 
+  // Predictions close 1 minute before kickoff
   const matchDate = new Date(match.match_date)
-  if (matchDate <= new Date()) {
-    return NextResponse.json({ error: "Nao e possivel fazer palpites para jogos que ja comecaram" }, { status: 400 })
+  const deadline = new Date(matchDate.getTime() - 60 * 1000)
+  if (new Date() >= deadline) {
+    return NextResponse.json(
+      { error: "Os palpites para este jogo ja foram encerrados (fecham 1 minuto antes do inicio)" },
+      { status: 400 },
+    )
   }
 
   // Upsert prediction

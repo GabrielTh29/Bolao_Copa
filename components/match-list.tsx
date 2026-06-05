@@ -40,7 +40,9 @@ export function MatchList({ matches, predictions, currentParticipantId, onPredic
   const canPredict = (match: Match) => {
     const now = new Date()
     const matchDate = new Date(match.match_date)
-    return match.status === "scheduled" && matchDate > now
+    // Predictions close 1 minute before kickoff
+    const deadline = new Date(matchDate.getTime() - 60 * 1000)
+    return match.status === "scheduled" && now < deadline
   }
 
   const startEditing = (match: Match) => {

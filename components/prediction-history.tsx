@@ -104,9 +104,18 @@ export function PredictionHistory({ predictions }: PredictionHistoryProps) {
                     </p>
                     <div className="flex items-center gap-2">
                       {getResultIcon(prediction)}
-                      {prediction.points > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                          +{prediction.points}
+                      {prediction.match?.status === "finished" && (
+                        <Badge
+                          variant={
+                            prediction.points > 0
+                              ? "secondary"
+                              : prediction.points < 0
+                                ? "destructive"
+                                : "outline"
+                          }
+                          className="text-xs"
+                        >
+                          {prediction.points > 0 ? `+${prediction.points}` : prediction.points}
                         </Badge>
                       )}
                     </div>

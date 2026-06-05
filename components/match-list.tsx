@@ -268,11 +268,18 @@ export function MatchList({ matches, predictions, currentParticipantId, onPredic
                       <div className="mt-3 pt-3 border-t text-center">
                         <p className="text-sm">
                           Seu palpite: <span className="font-medium">{prediction.home_score} x {prediction.away_score}</span>
-                          {prediction.points > 0 && (
-                            <Badge variant="secondary" className="ml-2">
-                              +{prediction.points} pts
-                            </Badge>
-                          )}
+                          <Badge
+                            variant={
+                              prediction.points > 0
+                                ? "secondary"
+                                : prediction.points < 0
+                                  ? "destructive"
+                                  : "outline"
+                            }
+                            className="ml-2"
+                          >
+                            {prediction.points > 0 ? `+${prediction.points}` : prediction.points} pts
+                          </Badge>
                         </p>
                       </div>
                     )}

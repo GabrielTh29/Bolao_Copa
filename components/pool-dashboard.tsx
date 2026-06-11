@@ -30,6 +30,7 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches, sessi
   const [participants, setParticipants] = useState(initialParticipants)
   const [matches, setMatches] = useState(initialMatches)
   const [predictions, setPredictions] = useState<Prediction[]>([])
+  const [allPredictions, setAllPredictions] = useState<Prediction[]>([])
   const [copied, setCopied] = useState(false)
   const [currentParticipantId] = useState<string>(session.participantId)
   const [currentParticipantName] = useState<string>(session.participantName)
@@ -47,6 +48,8 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches, sessi
   useEffect(() => {
     // Carrega predictions para o participante da sessao
     loadPredictions(session.participantId)
+    // Carrega predictions de todos os participantes do bolao
+    loadAllPredictions()
   }, [session.participantId])
 
   const refreshParticipants = async () => {
@@ -79,6 +82,33 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches, sessi
     }
   }
 
+  const loadAllPredictions = async () => {
+    // Busca todos os participantes do bolao
+    const { data: poolParticipants } = await supabase
+      .from("participants")
+      .select("id")
+      .eq("pool_id", pool.id)
+
+    if (!poolParticipants || poolParticipants.length === 0) {
+      setAllPredictions([])
+      return
+    }
+
+    const participantIds = poolParticipants.map((p) => p.id)
+
+    const { data } = await supabase
+      .from("predictions")
+      .select(`
+        *,
+        participant:participants(id, name)
+      `)
+      .in("participant_id", participantIds)
+
+    if (data) {
+      setAllPredictions(data)
+    }
+  }
+
   const copyInviteCode = async () => {
     await navigator.clipboard.writeText(pool.invite_code)
     setCopied(true)
@@ -97,6 +127,7 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches, sessi
   const handlePredictionUpdate = () => {
     if (currentParticipantId) {
       loadPredictions(currentParticipantId)
+      loadAllPredictions()
     }
   }
 
@@ -236,6 +267,7 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches, sessi
             <MatchList 
               matches={matches}
               predictions={predictions}
+              allPredictions={allPredictions}
               currentParticipantId={currentParticipantId}
               onPredictionUpdate={handlePredictionUpdate}
             />

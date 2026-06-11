@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, Clock, Check, X } from "lucide-react"
+import { Calendar, Clock, Check, X, ChevronDown, Users } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,29 +12,38 @@ import type { Match, Prediction } from "@/lib/types"
 interface MatchListProps {
   matches: Match[]
   predictions: Prediction[]
+  allPredictions?: Prediction[]
   currentParticipantId: string | null
   onPredictionUpdate: () => void
 }
 
-export function MatchList({ matches, predictions, currentParticipantId, onPredictionUpdate }: MatchListProps) {
+export function MatchList({
+  matches,
+  predictions,
+  allPredictions = [],
+  currentParticipantId,
+  onPredictionUpdate,
+}: MatchListProps) {
   const [editingMatch, setEditingMatch] = useState<string | null>(null)
   const [homeScore, setHomeScore] = useState("")
   const [awayScore, setAwayScore] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [expandedMatch, setExpandedMatch] = useState<string | null>(null)
 
   const getPrediction = (matchId: string) => {
     return predictions.find(p => p.match_id === matchId)
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
+  const date = new Date(dateString)
+  return date.toLocaleDateString("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "America/Sao_Paulo",
+  })
   }
 
   const canPredict = (match: Match) => {
@@ -43,6 +52,21 @@ export function MatchList({ matches, predictions, currentParticipantId, onPredic
     // Predictions close 1 minute before kickoff
     const deadline = new Date(matchDate.getTime() - 60 * 1000)
     return match.status === "scheduled" && now < deadline
+  }
+
+  // Palpites ficam visiveis para todos somente apos o fechamento (1 min antes do inicio)
+  const isPredictionsRevealed = (match: Match) => {
+    const now = new Date()
+    const matchDate = new Date(match.match_date)
+    const deadline = new Date(matchDate.getTime() - 60 * 1000)
+    return now >= deadline
+  }
+
+  // Retorna os palpites de todos os participantes para o jogo, ordenados por pontos
+  const getGroupPredictions = (matchId: string) => {
+    return allPredictions
+      .filter((p) => p.match_id === matchId)
+      .sort((a, b) => (b.points || 0) - (a.points || 0))
   }
 
   const startEditing = (match: Match) => {
@@ -283,6 +307,88 @@ export function MatchList({ matches, predictions, currentParticipantId, onPredic
                         </p>
                       </div>
                     )}
+
+                    {/* Palpites de todos os participantes (visiveis apos o fechamento) */}
+                    {isPredictionsRevealed(match) && (() => {
+                      const groupPredictions = getGroupPredictions(match.id)
+                      const isExpanded = expandedMatch === match.id
+                      const isFinished = match.status === "finished"
+
+                      return (
+                        <div className="mt-3 pt-3 border-t">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-between text-muted-foreground hover:text-foreground"
+                            onClick={() => setExpandedMatch(isExpanded ? null : match.id)}
+                            aria-expanded={isExpanded}
+                          >
+                            <span className="flex items-center gap-2">
+                              <Users className="h-4 w-4" />
+                              Palpites do grupo
+                              <Badge variant="outline" className="ml-1">
+                                {groupPredictions.length}
+                              </Badge>
+                            </span>
+                            <ChevronDown
+                              className={cn(
+                                "h-4 w-4 transition-transform",
+                                isExpanded && "rotate-180",
+                              )}
+                            />
+                          </Button>
+
+                          {isExpanded && (
+                            <div className="mt-3 flex flex-col gap-2">
+                              {groupPredictions.length === 0 ? (
+                                <p className="text-sm text-muted-foreground text-center py-2">
+                                  Nenhum participante palpitou neste jogo
+                                </p>
+                              ) : (
+                                groupPredictions.map((gp) => {
+                                  const isCurrent = gp.participant_id === currentParticipantId
+                                  return (
+                                    <div
+                                      key={gp.id}
+                                      className={cn(
+                                        "flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm",
+                                        isCurrent ? "bg-primary/10 border border-primary/20" : "bg-muted/50",
+                                      )}
+                                    >
+                                      <span className="font-medium truncate">
+                                        {gp.participant?.name || "Participante"}
+                                        {isCurrent && (
+                                          <span className="text-xs text-muted-foreground ml-1">(você)</span>
+                                        )}
+                                      </span>
+                                      <div className="flex items-center gap-3">
+                                        <span className="font-bold tabular-nums">
+                                          {gp.home_score} x {gp.away_score}
+                                        </span>
+                                        {isFinished && (
+                                          <Badge
+                                            variant={
+                                              gp.points > 0
+                                                ? "secondary"
+                                                : gp.points < 0
+                                                  ? "destructive"
+                                                  : "outline"
+                                            }
+                                            className="min-w-[3.5rem] justify-center"
+                                          >
+                                            {gp.points > 0 ? `+${gp.points}` : gp.points} pts
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                })
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </CardContent>
                 </Card>
               )

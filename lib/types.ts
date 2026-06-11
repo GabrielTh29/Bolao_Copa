@@ -59,6 +59,10 @@ export interface Prediction {
   created_at: string
   updated_at: string
   match?: Match
+  participant?: {
+    id: string
+    name: string
+  }
 }
 
 export interface LeaderboardEntry {

@@ -165,9 +165,9 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches, sessi
     }
   }
 
-  // Calculate leaderboard
+  // Calculate leaderboard usando os palpites de TODOS os participantes
   const leaderboard = participants.map(p => {
-    const participantPredictions = predictions.filter(pred => pred.participant_id === p.id)
+    const participantPredictions = allPredictions.filter(pred => pred.participant_id === p.id)
     const totalPoints = participantPredictions.reduce((sum, pred) => sum + (pred.points || 0), 0)
     
     return {

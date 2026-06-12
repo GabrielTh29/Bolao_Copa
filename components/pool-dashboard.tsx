@@ -15,6 +15,7 @@ import type { SessionData } from "@/lib/session"
 import { Leaderboard } from "@/components/leaderboard"
 import { MatchList } from "@/components/match-list"
 import { PredictionHistory } from "@/components/prediction-history"
+import { SyncButton } from "@/components/sync-button"
 
 interface PoolDashboardProps {
   pool: Pool
@@ -446,6 +447,17 @@ export function PoolDashboard({ pool, initialParticipants, initialMatches, sessi
                     </div>
                   )}
                 </div>
+
+                {isAdmin && (
+                  <div className="border-t pt-6">
+                    <h3 className="font-medium mb-2">Atualizar Resultados</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Os jogos são atualizados automaticamente todos os dias. Use o botão abaixo
+                      para forçar uma atualização imediata dos placares e da pontuação.
+                    </p>
+                    <SyncButton />
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

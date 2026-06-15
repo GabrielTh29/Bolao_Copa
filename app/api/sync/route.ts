@@ -54,41 +54,62 @@ export async function POST(request: Request) {
         continue
       }
 
-      // Check if match already exists (by teams and date)
-      const { data: existingMatch } = await supabase
-        .from("matches")
-        .select("id, status, home_score, away_score")
-        .eq("home_team_id", homeTeamId)
-        .eq("away_team_id", awayTeamId)
-        .eq("match_date", match.match_date)
-        .single()
+      // Find existing match. Primary key is the external_id from the API,
+      // which is stable even if the kickoff time changes. Fall back to the
+      // legacy lookup (teams + date) for matches saved before external_id existed.
+      let existingMatch: {
+        id: string
+        status: string
+        home_score: number | null
+        away_score: number | null
+      } | null = null
+
+      if (match.external_id != null) {
+        const { data } = await supabase
+          .from("matches")
+          .select("id, status, home_score, away_score")
+          .eq("external_id", match.external_id)
+          .maybeSingle()
+        existingMatch = data
+      }
+
+      if (!existingMatch) {
+        const { data } = await supabase
+          .from("matches")
+          .select("id, status, home_score, away_score")
+          .eq("home_team_id", homeTeamId)
+          .eq("away_team_id", awayTeamId)
+          .eq("match_date", match.match_date)
+          .maybeSingle()
+        existingMatch = data
+      }
 
       if (existingMatch) {
-        // Update existing match if status or scores changed
-        if (
-          existingMatch.status !== match.status ||
-          existingMatch.home_score !== match.home_score ||
-          existingMatch.away_score !== match.away_score
-        ) {
-          await supabase
-            .from("matches")
-            .update({
-              status: match.status,
-              home_score: match.home_score,
-              away_score: match.away_score,
-            })
-            .eq("id", existingMatch.id)
+        // Update existing match if anything relevant changed (status, scores,
+        // kickoff time, or backfilling the external_id on legacy rows).
+        await supabase
+          .from("matches")
+          .update({
+            external_id: match.external_id,
+            status: match.status,
+            home_score: match.home_score,
+            away_score: match.away_score,
+            match_date: match.match_date,
+            stage: match.stage,
+            group_name: match.group_name,
+          })
+          .eq("id", existingMatch.id)
 
-          // If match just finished, calculate points for predictions
-          if (match.status === "finished" && existingMatch.status !== "finished") {
-            await calculateMatchPoints(supabase, existingMatch.id, match.home_score!, match.away_score!)
-          }
-
-          updatedCount++
+        // If match just finished, calculate points for predictions
+        if (match.status === "finished" && existingMatch.status !== "finished") {
+          await calculateMatchPoints(supabase, existingMatch.id, match.home_score!, match.away_score!)
         }
+
+        updatedCount++
       } else {
         // Insert new match
         await supabase.from("matches").insert({
+          external_id: match.external_id,
           home_team_id: homeTeamId,
           away_team_id: awayTeamId,
           home_score: match.home_score,

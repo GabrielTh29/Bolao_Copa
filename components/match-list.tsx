@@ -416,9 +416,6 @@ export function MatchList({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Proximos jogos / abertos para palpite */}
-      {renderGroups(upcomingGrouped)}
-
       {/* Jogos que ja foram: recolhidos por padrao */}
       {pastMatches.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -445,6 +442,9 @@ export function MatchList({
           )}
         </div>
       )}
+
+      {/* Proximos jogos / abertos para palpite */}
+      {renderGroups(upcomingGrouped)}
     </div>
   )
 }

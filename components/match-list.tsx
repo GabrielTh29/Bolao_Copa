@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Calendar, Clock, Check, X, ChevronDown, Users, History } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -31,6 +31,9 @@ export function MatchList({
   const [error, setError] = useState<string | null>(null)
   const [expandedMatch, setExpandedMatch] = useState<string | null>(null)
   const [showPast, setShowPast] = useState(false)
+  // Evita mismatch de hidratacao: only compute "now" apos montar no cliente
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   const getPrediction = (matchId: string) => {
     return predictions.find(p => p.match_id === matchId)
@@ -129,9 +132,9 @@ export function MatchList({
     }
   }
 
-  // Um jogo "ja foi" quando ja comecou (data de inicio no passado)
-  const now = new Date()
-  const isPastMatch = (match: Match) => new Date(match.match_date) <= now
+  // Um jogo "ja foi" quando ja comecou (data de inicio no passado).
+  // So consideramos passado apos montar no cliente para evitar mismatch de hidratacao.
+  const isPastMatch = (match: Match) => mounted && new Date(match.match_date) <= new Date()
 
   // Group matches by date. Quando "descending", os grupos vao do mais recente para o mais antigo.
   const groupByDate = (list: Match[], descending = false) => {
@@ -144,6 +147,7 @@ export function MatchList({
         weekday: "long",
         day: "2-digit",
         month: "long",
+        timeZone: "America/Sao_Paulo",
       })
       if (!acc[date]) acc[date] = []
       acc[date].push(match)

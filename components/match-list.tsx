@@ -188,7 +188,8 @@ export function MatchList({
               return (
                 <Card key={match.id} className={cn(
                   "overflow-hidden transition-all",
-                  isEditing && "ring-2 ring-primary"
+                  isEditing && "ring-2 ring-primary",
+                  match.status === "finished" && "bg-muted/60 border-muted"
                 )}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">

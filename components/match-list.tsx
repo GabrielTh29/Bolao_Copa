@@ -51,6 +51,8 @@ export function MatchList({
   }
 
   const canPredict = (match: Match) => {
+    // Antes de montar no cliente, retorna valor estavel para evitar mismatch de hidratacao
+    if (!mounted) return false
     const now = new Date()
     const matchDate = new Date(match.match_date)
     // Predictions close 1 minute before kickoff
@@ -60,6 +62,8 @@ export function MatchList({
 
   // Palpites ficam visiveis para todos somente apos o fechamento (1 min antes do inicio)
   const isPredictionsRevealed = (match: Match) => {
+    // Antes de montar no cliente, retorna valor estavel para evitar mismatch de hidratacao
+    if (!mounted) return false
     const now = new Date()
     const matchDate = new Date(match.match_date)
     const deadline = new Date(matchDate.getTime() - 60 * 1000)

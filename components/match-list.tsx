@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Calendar, Clock, Check, X, ChevronDown, Users, History } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -31,6 +31,9 @@ export function MatchList({
   const [error, setError] = useState<string | null>(null)
   const [expandedMatch, setExpandedMatch] = useState<string | null>(null)
   const [showPast, setShowPast] = useState(false)
+  // Evita mismatch de hidratacao: only compute "now" apos montar no cliente
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   const getPrediction = (matchId: string) => {
     return predictions.find(p => p.match_id === matchId)
@@ -48,6 +51,8 @@ export function MatchList({
   }
 
   const canPredict = (match: Match) => {
+    // Antes de montar no cliente, retorna valor estavel para evitar mismatch de hidratacao
+    if (!mounted) return false
     const now = new Date()
     const matchDate = new Date(match.match_date)
     // Predictions close 1 minute before kickoff
@@ -57,6 +62,8 @@ export function MatchList({
 
   // Palpites ficam visiveis para todos somente apos o fechamento (1 min antes do inicio)
   const isPredictionsRevealed = (match: Match) => {
+    // Antes de montar no cliente, retorna valor estavel para evitar mismatch de hidratacao
+    if (!mounted) return false
     const now = new Date()
     const matchDate = new Date(match.match_date)
     const deadline = new Date(matchDate.getTime() - 60 * 1000)
@@ -129,9 +136,9 @@ export function MatchList({
     }
   }
 
-  // Um jogo "ja foi" quando ja comecou (data de inicio no passado)
-  const now = new Date()
-  const isPastMatch = (match: Match) => new Date(match.match_date) <= now
+  // Um jogo "ja foi" quando ja comecou (data de inicio no passado).
+  // So consideramos passado apos montar no cliente para evitar mismatch de hidratacao.
+  const isPastMatch = (match: Match) => mounted && new Date(match.match_date) <= new Date()
 
   // Group matches by date. Quando "descending", os grupos vao do mais recente para o mais antigo.
   const groupByDate = (list: Match[], descending = false) => {
@@ -144,6 +151,7 @@ export function MatchList({
         weekday: "long",
         day: "2-digit",
         month: "long",
+        timeZone: "America/Sao_Paulo",
       })
       if (!acc[date]) acc[date] = []
       acc[date].push(match)
@@ -184,7 +192,8 @@ export function MatchList({
               return (
                 <Card key={match.id} className={cn(
                   "overflow-hidden transition-all",
-                  isEditing && "ring-2 ring-primary"
+                  isEditing && "ring-2 ring-primary",
+                  match.status === "finished" && "bg-muted/60 border-muted"
                 )}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, Clock, Check, X, ChevronDown, Users } from "lucide-react"
+import { Calendar, Clock, Check, X, ChevronDown, Users, History } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,6 +30,7 @@ export function MatchList({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expandedMatch, setExpandedMatch] = useState<string | null>(null)
+  const [showPast, setShowPast] = useState(false)
 
   const getPrediction = (matchId: string) => {
     return predictions.find(p => p.match_id === matchId)
@@ -128,17 +129,34 @@ export function MatchList({
     }
   }
 
-  // Group matches by date
-  const groupedMatches = matches.reduce((acc, match) => {
-    const date = new Date(match.match_date).toLocaleDateString("pt-BR", {
-      weekday: "long",
-      day: "2-digit",
-      month: "long",
+  // Um jogo "ja foi" quando ja comecou (data de inicio no passado)
+  const now = new Date()
+  const isPastMatch = (match: Match) => new Date(match.match_date) <= now
+
+  // Group matches by date. Quando "descending", os grupos vao do mais recente para o mais antigo.
+  const groupByDate = (list: Match[], descending = false) => {
+    const sorted = [...list].sort((a, b) => {
+      const diff = new Date(a.match_date).getTime() - new Date(b.match_date).getTime()
+      return descending ? -diff : diff
     })
-    if (!acc[date]) acc[date] = []
-    acc[date].push(match)
-    return acc
-  }, {} as Record<string, Match[]>)
+    return sorted.reduce((acc, match) => {
+      const date = new Date(match.match_date).toLocaleDateString("pt-BR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+      })
+      if (!acc[date]) acc[date] = []
+      acc[date].push(match)
+      return acc
+    }, {} as Record<string, Match[]>)
+  }
+
+  const upcomingMatches = matches.filter((m) => !isPastMatch(m))
+  const pastMatches = matches.filter((m) => isPastMatch(m))
+
+  const upcomingGrouped = groupByDate(upcomingMatches)
+  // Jogos que ja foram: do mais recente para o mais antigo
+  const pastGrouped = groupByDate(pastMatches, true)
 
   if (matches.length === 0) {
     return (
@@ -150,9 +168,8 @@ export function MatchList({
     )
   }
 
-  return (
-    <div className="flex flex-col gap-6">
-      {Object.entries(groupedMatches).map(([date, dayMatches]) => (
+  const renderGroups = (grouped: Record<string, Match[]>) =>
+    Object.entries(grouped).map(([date, dayMatches]) => (
         <div key={date}>
           <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
             <Calendar className="h-4 w-4" />
@@ -395,7 +412,39 @@ export function MatchList({
             })}
           </div>
         </div>
-      ))}
+    ))
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Jogos que ja foram: recolhidos por padrao */}
+      {pastMatches.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <Button
+            variant="outline"
+            className="w-full justify-between"
+            onClick={() => setShowPast((v) => !v)}
+            aria-expanded={showPast}
+          >
+            <span className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Jogos que já foram
+              <Badge variant="secondary" className="ml-1">
+                {pastMatches.length}
+              </Badge>
+            </span>
+            <ChevronDown
+              className={cn("h-4 w-4 transition-transform", showPast && "rotate-180")}
+            />
+          </Button>
+
+          {showPast && (
+            <div className="flex flex-col gap-6">{renderGroups(pastGrouped)}</div>
+          )}
+        </div>
+      )}
+
+      {/* Proximos jogos / abertos para palpite */}
+      {renderGroups(upcomingGrouped)}
     </div>
   )
 }

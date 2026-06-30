@@ -44,6 +44,9 @@ export interface FootballDataMatch {
     duration: "REGULAR" | "EXTRA_TIME" | "PENALTY_SHOOTOUT"
     fullTime: FootballDataScore
     halfTime: FootballDataScore
+    regularTime?: FootballDataScore
+    extraTime?: FootballDataScore
+    penalties?: FootballDataScore
   }
 }
 
@@ -126,8 +129,28 @@ export async function fetchTeams(competition: CompetitionCode = COMPETITIONS.WOR
   return data.teams
 }
 
+// Get the score without penalty shootout goals.
+// The API's `fullTime` includes penalty goals (e.g. 1-1 in extra time + 3-4 on
+// pens = 4-5 in fullTime). We subtract the penalties so the result reflects the
+// score from regular + extra time only.
+function getScoreWithoutPenalties(score: FootballDataMatch["score"]): FootballDataScore {
+  if (score.duration === "PENALTY_SHOOTOUT" && score.penalties) {
+    const home =
+      score.fullTime.home !== null && score.penalties.home !== null
+        ? score.fullTime.home - score.penalties.home
+        : score.fullTime.home
+    const away =
+      score.fullTime.away !== null && score.penalties.away !== null
+        ? score.fullTime.away - score.penalties.away
+        : score.fullTime.away
+    return { home, away }
+  }
+  return { home: score.fullTime.home, away: score.fullTime.away }
+}
+
 // Transform Football-Data match to our format
 export function transformMatch(match: FootballDataMatch) {
+  const score = getScoreWithoutPenalties(match.score)
   return {
     external_id: match.id,
     home_team_name: match.homeTeam.name,
@@ -136,8 +159,8 @@ export function transformMatch(match: FootballDataMatch) {
     away_team_name: match.awayTeam.name,
     away_team_code: match.awayTeam.tla,
     away_team_flag: match.awayTeam.crest,
-    home_score: match.score.fullTime.home,
-    away_score: match.score.fullTime.away,
+    home_score: score.home,
+    away_score: score.away,
     match_date: match.utcDate,
     stage: mapStage(match.stage),
     group_name: match.group ? `Grupo ${match.group.replace("GROUP_", "")}` : null,

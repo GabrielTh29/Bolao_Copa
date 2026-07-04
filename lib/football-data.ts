@@ -44,6 +44,9 @@ export interface FootballDataMatch {
     duration: "REGULAR" | "EXTRA_TIME" | "PENALTY_SHOOTOUT"
     fullTime: FootballDataScore
     halfTime: FootballDataScore
+    regularTime?: FootballDataScore
+    extraTime?: FootballDataScore
+    penalties?: FootballDataScore
   }
 }
 
@@ -126,8 +129,40 @@ export async function fetchTeams(competition: CompetitionCode = COMPETITIONS.WOR
   return data.teams
 }
 
+// Resolve the score to store for a match.
+// Matches decided by a penalty shootout are treated as a draw: the stored
+// result is the score at the end of extra time (regularTime + extraTime),
+// NOT the fullTime score, which the API inflates with the penalty goals.
+function resolveScore(match: FootballDataMatch): FootballDataScore {
+  if (match.score.duration === "PENALTY_SHOOTOUT") {
+    const regular = match.score.regularTime
+    const extra = match.score.extraTime
+
+    // If the detailed breakdown is available, sum regular + extra time.
+    if (regular) {
+      return {
+        home: (regular.home ?? 0) + (extra?.home ?? 0),
+        away: (regular.away ?? 0) + (extra?.away ?? 0),
+      }
+    }
+
+    // Fallback: without the breakdown, strip the penalties from fullTime so the
+    // result becomes the (drawn) score before the shootout.
+    const penalties = match.score.penalties
+    if (penalties && match.score.fullTime.home != null && match.score.fullTime.away != null) {
+      return {
+        home: match.score.fullTime.home - (penalties.home ?? 0),
+        away: match.score.fullTime.away - (penalties.away ?? 0),
+      }
+    }
+  }
+
+  return match.score.fullTime
+}
+
 // Transform Football-Data match to our format
 export function transformMatch(match: FootballDataMatch) {
+  const score = resolveScore(match)
   return {
     external_id: match.id,
     home_team_name: match.homeTeam.name,
@@ -136,8 +171,8 @@ export function transformMatch(match: FootballDataMatch) {
     away_team_name: match.awayTeam.name,
     away_team_code: match.awayTeam.tla,
     away_team_flag: match.awayTeam.crest,
-    home_score: match.score.fullTime.home,
-    away_score: match.score.fullTime.away,
+    home_score: score.home,
+    away_score: score.away,
     match_date: match.utcDate,
     stage: mapStage(match.stage),
     group_name: match.group ? `Grupo ${match.group.replace("GROUP_", "")}` : null,

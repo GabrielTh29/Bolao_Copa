@@ -91,6 +91,8 @@ export async function POST(request: Request) {
           .from("matches")
           .update({
             external_id: match.external_id,
+            home_team_id: homeTeamId,
+            away_team_id: awayTeamId,
             status: match.status,
             home_score: match.home_score,
             away_score: match.away_score,
